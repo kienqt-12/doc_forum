@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Box from '@mui/material/Box';
 import FavoriteBorderOutlinedIcon from '@mui/icons-material/FavoriteBorderOutlined';
+import PeopleIcon from '@mui/icons-material/People';
 import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsActiveOutlined';
 import Avatar from '@mui/material/Avatar';
 import { ReactComponent as logo } from '~/assets/logo.svg';
@@ -14,42 +15,36 @@ import { Button, Menu, MenuItem, Divider, ListItemIcon } from '@mui/material';
 import { Logout, Settings, Person } from '@mui/icons-material';
 import useNavigation from '../../hooks/useNavigation';
 import ClickAwayListener from '@mui/material/ClickAwayListener';
-import NotiDropdown from '../NotiDropdown';
+import NotiDropdown from './NotiDropdown/notiDropdown';
+import FriendList from './Friendlist/friendlist';
 
 function AppBar() {
   const { user, logout } = useAuth();
-  const { goToLogin } = useNavigation();
-  const {goToProfile} = useNavigation();
+  const { goToLogin, goToProfile } = useNavigation();
 
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
-  
-  const handleAvatarClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
 
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
+  const handleAvatarClick = (event) => setAnchorEl(event.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
   const handleLogout = () => {
     logout();
     handleMenuClose();
   };
-
-  const handleProfile = () => {
-    console.log('Go to profile');
-    handleMenuClose();
-  };
-
   const handleSettings = () => {
     console.log('Go to settings');
     handleMenuClose();
   };
 
+  // Dropdown Thông báo
   const [notiOpen, setNotiOpen] = useState(false);
   const toggleNotiDropdown = () => setNotiOpen((prev) => !prev);
   const handleClickAway = () => setNotiOpen(false);
+
+  // Dropdown Danh sách bạn bè
+  const [friendOpen, setFriendOpen] = useState(false);
+  const toggleFriendDropdown = () => setFriendOpen((prev) => !prev);
+  const handleFriendClickAway = () => setFriendOpen(false);
 
   return (
     <Box
@@ -85,38 +80,75 @@ function AppBar() {
           gap: 2,
         }}
       >
-        <Tooltip title="Đã theo dõi">
-          <FavoriteBorderOutlinedIcon
-            sx={{ color: '#fff', fontSize: 30, cursor: 'pointer' }}
-          />
-        </Tooltip>
+        {/* Friend List Icon + Dropdown */}
+        <ClickAwayListener onClickAway={handleFriendClickAway}>
+          <Box sx={{ position: 'relative' }}>
+            <Tooltip title="Đã theo dõi">
+              <PeopleIcon
+                onClick={toggleFriendDropdown}
+                sx={{
+                  color: '#fff',
+                  fontSize: 30,
+                  cursor: 'pointer',
+                  transition: 'color 0.3s ease',
+                  '&:hover': {
+                    color: '#9C27B0',
+                  },
+                }}
+              />
+            </Tooltip>
+
+            {friendOpen && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: '120%',
+                  right: 0,
+                  zIndex: 1500,
+                }}
+              >
+                <FriendList />
+              </Box>
+            )}
+          </Box>
+        </ClickAwayListener>
+
+        {/* Notifications */}
         <ClickAwayListener onClickAway={handleClickAway}>
-  <Box sx={{ position: 'relative' }}>
-    <Tooltip title="Thông báo">
-      <Badge color="error" variant="dot">
-        <NotificationsActiveOutlinedIcon
-          sx={{ color: '#fff', fontSize: 30, cursor: 'pointer' }}
-          onClick={toggleNotiDropdown}
-        />
-      </Badge>
-    </Tooltip>
+          <Box sx={{ position: 'relative' }}>
+            <Tooltip title="Thông báo">
+              <Badge color="error" variant="dot">
+                <NotificationsActiveOutlinedIcon
+                  onClick={toggleNotiDropdown}
+                  sx={{
+                    color: '#fff',
+                    fontSize: 30,
+                    cursor: 'pointer',
+                    transition: 'color 0.3s ease',
+                    '&:hover': {
+                      color: '#9C27B0',
+                    },
+                  }}
+                />
+              </Badge>
+            </Tooltip>
 
-    {notiOpen && (
-      <Box
-        sx={{
-          position: 'absolute',
-          top: '120%',
-          right: 0,
-          zIndex: 1500,
-        }}
-      >
-        <NotiDropdown />
-      </Box>
-    )}
-  </Box>
-</ClickAwayListener>
+            {notiOpen && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: '120%',
+                  right: 0,
+                  zIndex: 1500,
+                }}
+              >
+                <NotiDropdown />
+              </Box>
+            )}
+          </Box>
+        </ClickAwayListener>
 
-
+        {/* Avatar / Menu */}
         {user ? (
           <>
             <Tooltip title={user.name}>

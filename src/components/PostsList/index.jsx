@@ -1,4 +1,5 @@
-import React, { useState } from 'react';import {
+import React, { useState, useEffect } from 'react';
+import {
   Box,
   Card,
   CardContent,
@@ -8,62 +9,68 @@ import React, { useState } from 'react';import {
   Checkbox,
   Rating,
   Divider,
-  Stack,
+  Stack
 } from '@mui/material';
 import { Favorite, FavoriteBorder, Share, Comment, Visibility } from '@mui/icons-material';
 import useNavigation from '../../hooks/useNavigation';
 import { useAuth } from '../../context/AuthContext';
 
-
-const posts = [
-  {
-    id: 1,
-    title: 'Chia sẻ kinh nghiệm khám tim mạch',
-    hoursAgo: '2 giờ trước',
-    comments: 25,
-    views: 150,
-    rating: 4.5,
-    image: 'https://via.placeholder.com/48',
-  },
-  {
-    id: 2,
-    title: 'Hỏi về bệnh nhi khoa',
-    hoursAgo: '5 giờ trước',
-    comments: 12,
-    views: 80,
-    rating: 4.0,
-    image: 'https://via.placeholder.com/48',
-  },
-  {
-    id: 3,
-    title: 'Cách chăm sóc da liễu',
-    hoursAgo: '10 giờ trước',
-    comments: 8,
-    views: 60,
-    rating: 3.5,
-    image: 'https://via.placeholder.com/48',
-  },
-  {
-    id: 3,
-    title: 'Cách chăm sóc da liễu',
-    hoursAgo: '10 giờ trước',
-    comments: 8,
-    views: 60,
-    rating: 3.5,
-    image: 'https://via.placeholder.com/48',
-  },
-  {
-    id: 3,
-    title: 'Cách chăm sóc da liễu',
-    hoursAgo: '10 giờ trước',
-    comments: 8,
-    views: 60,
-    rating: 3.5,
-    image: 'https://via.placeholder.com/48',
-  },
-];
-
 function PostList() {
+  const [posts, setPosts] = useState([]);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+
+  const { goToLogin, goToPostDetail } = useNavigation();
+  const { user } = useAuth();
+
+  const fetchPosts = async () => {
+    try {
+      const res = await fetch('http://localhost:8017/v1/posts');
+      if (!res.ok) throw new Error('Lỗi lấy bài viết');
+      const data = await res.json();
+
+      // Sắp xếp theo thời gian mới nhất
+      const sorted = [...data].sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
+
+      const enhanced = sorted.map((post) => {
+        let avatarFallback = 'https://via.placeholder.com/48';
+        let image = post?.author?.avatar || avatarFallback;
+
+        if (
+          post?.author?.email &&
+          user?.email &&
+          post.author.email === user.email &&
+          user?.avatar
+        ) {
+          image = user.avatar;
+        }
+
+        return {
+          ...post,
+          id: post._id,
+          hoursAgo: '1 giờ trước',
+          comments: post.comments || 0,
+          views: post.views || 0,
+          rating: post.rating || 4,
+          image
+        };
+      });
+
+      setPosts(enhanced);
+    } catch (error) {
+      console.error('Lỗi khi tải bài viết:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchPosts();
+
+    const handleNewPost = () => fetchPosts();
+    window.addEventListener('postCreated', handleNewPost);
+    return () => window.removeEventListener('postCreated', handleNewPost);
+  }, [user]);
+
   const handleCommentClick = (postId) => {
     console.log(`Mở bình luận cho bài post ${postId}`);
   };
@@ -71,16 +78,11 @@ function PostList() {
   const handleCardClick = (id) => {
     if (!user) {
       setSnackbarOpen(true);
-      // Optional: Tự chuyển hướng sau 1s
       setTimeout(() => goToLogin(), 1000);
       return;
     }
     goToPostDetail(id);
   };
-  const {goToLogin} = useNavigation();
-  const {goToPostDetail} = useNavigation();
-  const { user } = useAuth();
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, px: 2, pt: 2 }}>
@@ -97,8 +99,8 @@ function PostList() {
             transition: '0.3s',
             '&:hover': {
               boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12)',
-              transform: 'translateY(-2px)',
-            },
+              transform: 'translateY(-2px)'
+            }
           }}
         >
           {/* Avatar */}
@@ -113,10 +115,9 @@ function PostList() {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'flex-start',
-                flexWrap: 'wrap',
+                flexWrap: 'wrap'
               }}
             >
-              {/* Left: Title + Time */}
               <Box>
                 <Typography variant="h6" sx={{ fontSize: '1rem', color: '#333', fontWeight: 600 }}>
                   {post.title}
@@ -126,15 +127,9 @@ function PostList() {
                 </Typography>
               </Box>
 
-              {/* Right: Rating + Actions */}
               <Stack direction="row" spacing={1} alignItems="center">
-                <Rating
-                  value={post.rating}
-                  readOnly
-                  precision={0.5}
-                  sx={{ fontSize: '1rem', color: '#FFD700' }}
-                />
-                <IconButton size="small" onClick={() => handleCommentClick(post.id)}>
+                <Rating value={post.rating} readOnly precision={0.5} sx={{ fontSize: '1rem', color: '#FFD700' }} />
+                <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleCommentClick(post.id); }}>
                   <Comment sx={{ fontSize: 18, color: '#FE5E7E' }} />
                 </IconButton>
                 <Checkbox
@@ -142,7 +137,7 @@ function PostList() {
                   checkedIcon={<Favorite sx={{ fontSize: 18, color: '#BC3AAA' }} />}
                   sx={{ p: 0 }}
                 />
-                <IconButton size="small">
+                <IconButton size="small" onClick={(e) => e.stopPropagation()}>
                   <Share sx={{ fontSize: 18, color: '#FE5E7E' }} />
                 </IconButton>
               </Stack>
@@ -150,7 +145,6 @@ function PostList() {
 
             <Divider sx={{ my: 1 }} />
 
-            {/* Bottom: Comments + Views */}
             <Box sx={{ display: 'flex', gap: 3, color: '#666' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <Comment sx={{ fontSize: 16 }} />

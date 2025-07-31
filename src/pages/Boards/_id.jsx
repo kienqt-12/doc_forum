@@ -4,7 +4,7 @@ import AppBar from '~/components/AppBar'
 import AppFilter from "~/components/AppFilter"
 import PostList from "../../components/PostsList"
 import AutoSlider from "~/components/AutoSlider"
-import TopLikedPosts from "~/components/TopLiked"
+import TopRankedSection from "~/components/TopLiked"
 
 function Board() {
   return (
@@ -89,7 +89,7 @@ function Board() {
               }
             }}
           >
-            <TopLikedPosts />
+            <TopRankedSection />
           </Box>
         </Box>
       </Box>

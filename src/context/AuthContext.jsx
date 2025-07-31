@@ -6,19 +6,35 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [isSigningIn, setIsSigningIn] = useState(false); // ✅ kiểm soát popup
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   const login = async () => {
-    if (isSigningIn) return; // ⛔ chặn gọi lại khi đang đăng nhập
+    if (isSigningIn) return;
     setIsSigningIn(true);
+
     try {
       const res = await signInWithPopup(auth, provider);
       const user = res.user;
-      setUser({
+
+      const userData = {
         name: user.displayName,
         email: user.email,
         avatar: user.photoURL,
+      };
+
+      // ✅ Gửi lên backend để tạo / tìm user
+      const response = await fetch('http://localhost:8017/v1/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
       });
+
+      if (!response.ok) throw new Error('Backend error');
+
+      const result = await response.json();
+      setUser(result.user); // ✅ Dùng user từ backend (có _id)
+
+      console.log('✅ Logged in user:', result.user);
     } catch (error) {
       console.error('Login error:', error);
     } finally {
@@ -31,7 +47,8 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  useEffect(() => {
+  // ✅ Sync lại user khi reload trang (nếu còn session Firebase)
+useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setUser({

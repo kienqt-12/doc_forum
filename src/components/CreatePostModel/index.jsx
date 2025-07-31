@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -13,6 +13,7 @@ import {
   Autocomplete,
   Chip,
 } from '@mui/material';
+import { useAuth } from '../../context/AuthContext';
 
 const CITIES = [
   'Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ',
@@ -20,6 +21,8 @@ const CITIES = [
 ];
 
 const CreatePostModal = ({ open, onClose, onSubmit }) => {
+  const { user } = useAuth(); // ✅ Lấy user từ context
+
   const [form, setForm] = useState({
     title: '',
     content: '',
@@ -64,19 +67,48 @@ const CreatePostModal = ({ open, onClose, onSubmit }) => {
     }));
   };
 
-  const handleSubmit = () => {
-    if (onSubmit) onSubmit(form);
-    onClose();
-    setForm({
-      title: '',
-      content: '',
-      doctor: '',
-      workplace: '',
-      city: '',
-      rating: 0,
-      tags: [],
-    });
-    setPreviewMode(false);
+  const handleSubmit = async () => {
+    try {
+      const postData = {
+        ...form,
+        author: {
+          name: user?.name,
+          email: user?.email, 
+          avatar: user?.avatar 
+        }
+      };
+
+      const response = await fetch('http://localhost:8017/v1/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(postData),
+      });
+
+      if (!response.ok) throw new Error('Failed to create post');
+
+      const result = await response.json();
+      console.log('✅ Post created:', result);
+
+      window.dispatchEvent(new Event('postCreated')); // Reload danh sách bài viết
+
+      // Reset form & đóng modal
+      setForm({
+        title: '',
+        content: '',
+        doctor: '',
+        workplace: '',
+        city: '',
+        rating: 0,
+        tags: [],
+      });
+      setPreviewMode(false);
+      onClose();
+
+      if (onSubmit) onSubmit(result);
+    } catch (error) {
+      console.error('❌ Lỗi khi tạo bài viết:', error);
+      alert('Không thể tạo bài viết. Vui lòng thử lại.');
+    }
   };
 
   return (
@@ -143,7 +175,9 @@ const CreatePostModal = ({ open, onClose, onSubmit }) => {
             <Autocomplete
               options={CITIES}
               value={form.city}
-              onChange={(_, newValue) => setForm((prev) => ({ ...prev, city: newValue }))}
+              onChange={(_, newValue) =>
+                setForm((prev) => ({ ...prev, city: newValue }))
+              }
               renderInput={(params) => <TextField {...params} label="Thành phố" />}
             />
 
