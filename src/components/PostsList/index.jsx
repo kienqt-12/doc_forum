@@ -1,5 +1,4 @@
-import React from 'react';
-import {
+import React, { useState } from 'react';import {
   Box,
   Card,
   CardContent,
@@ -78,9 +77,10 @@ function PostList() {
     }
     goToPostDetail(id);
   };
-
+  const {goToLogin} = useNavigation();
   const {goToPostDetail} = useNavigation();
   const { user } = useAuth();
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, px: 2, pt: 2 }}>

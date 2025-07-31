@@ -13,6 +13,8 @@ import { useAuth } from '../../context/AuthContext';
 import { Button, Menu, MenuItem, Divider, ListItemIcon } from '@mui/material';
 import { Logout, Settings, Person } from '@mui/icons-material';
 import useNavigation from '../../hooks/useNavigation';
+import ClickAwayListener from '@mui/material/ClickAwayListener';
+import NotiDropdown from '../NotiDropdown';
 
 function AppBar() {
   const { user, logout } = useAuth();
@@ -21,7 +23,7 @@ function AppBar() {
 
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
-
+  
   const handleAvatarClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
@@ -44,6 +46,10 @@ function AppBar() {
     console.log('Go to settings');
     handleMenuClose();
   };
+
+  const [notiOpen, setNotiOpen] = useState(false);
+  const toggleNotiDropdown = () => setNotiOpen((prev) => !prev);
+  const handleClickAway = () => setNotiOpen(false);
 
   return (
     <Box
@@ -84,13 +90,32 @@ function AppBar() {
             sx={{ color: '#fff', fontSize: 30, cursor: 'pointer' }}
           />
         </Tooltip>
-        <Tooltip title="Thông báo">
-          <Badge color="error" variant="dot">
-            <NotificationsActiveOutlinedIcon
-              sx={{ color: '#fff', fontSize: 30, cursor: 'pointer' }}
-            />
-          </Badge>
-        </Tooltip>
+        <ClickAwayListener onClickAway={handleClickAway}>
+  <Box sx={{ position: 'relative' }}>
+    <Tooltip title="Thông báo">
+      <Badge color="error" variant="dot">
+        <NotificationsActiveOutlinedIcon
+          sx={{ color: '#fff', fontSize: 30, cursor: 'pointer' }}
+          onClick={toggleNotiDropdown}
+        />
+      </Badge>
+    </Tooltip>
+
+    {notiOpen && (
+      <Box
+        sx={{
+          position: 'absolute',
+          top: '120%',
+          right: 0,
+          zIndex: 1500,
+        }}
+      >
+        <NotiDropdown />
+      </Box>
+    )}
+  </Box>
+</ClickAwayListener>
+
 
         {user ? (
           <>
