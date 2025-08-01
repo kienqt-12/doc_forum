@@ -37,7 +37,7 @@ const friends = [
   },
 ];
 
-function FriendList() {
+function FriendList({ onChatClick }) {
   return (
     <Box
       sx={{
@@ -61,10 +61,11 @@ function FriendList() {
         variant="h6"
         fontWeight={700}
         mb={1}
-        sx={{ color: '#9C27B0' }} // màu chủ đạo
+        sx={{ color: '#9C27B0' }}
       >
         👥 Danh sách bạn bè
       </Typography>
+
       <Divider sx={{ mb: 1 }} />
 
       <Stack spacing={1.5}>
@@ -76,7 +77,7 @@ function FriendList() {
               alignItems: 'center',
               p: 1,
               borderRadius: 2,
-              transition: 'all 0.2s ease',
+              transition: 'all 0.25s ease',
               '&:hover': {
                 backgroundColor: '#F3E5F5', // tím nhạt
               },
@@ -92,7 +93,7 @@ function FriendList() {
                     right: 0,
                     width: 10,
                     height: 10,
-                    bgcolor: '#4CAF50', // màu xanh online
+                    bgcolor: '#4CAF50',
                     border: '2px solid #fff',
                     borderRadius: '50%',
                   }}
@@ -109,8 +110,9 @@ function FriendList() {
 
             <Tooltip title="Nhắn tin">
               <IconButton
+                onClick={() => onChatClick && onChatClick(friend)}
                 sx={{
-                  color: '#9C27B0', // màu chủ đạo
+                  color: '#9C27B0',
                   '&:hover': {
                     color: '#7B1FA2',
                   },

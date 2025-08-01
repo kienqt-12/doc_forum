@@ -1,18 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Fade } from '@mui/material';
 
+import Ads1 from '~/assets/1.jpg';
+import Ads2 from '~/assets/2.jpg';
+import Ads3 from '~/assets/3.jpg';
+
 const slides = [
   {
-    title: 'Chào mừng đến với trang cá nhân!',
-    image: 'https://via.placeholder.com/800x300/FE5E7E/ffffff?text=Quảng+Cáo+1',
+    image: Ads1
   },
   {
-    title: 'Khám phá những bài viết mới nhất',
-    image: 'https://via.placeholder.com/800x300/BC3AAA/ffffff?text=Quảng+Cáo+2',
+    image: Ads2
   },
   {
-    title: 'Kết nối với bạn bè dễ dàng!',
-    image: 'https://via.placeholder.com/800x300/FFB6C1/000000?text=Quảng+Cáo+3',
+    image: Ads3
   },
 ];
 
@@ -51,8 +52,8 @@ const AutoSlider = () => {
             src={slides[index].image}
             alt={slides[index].title}
             sx={{
-              width: '100%',
-              height: '70%',
+              width: '95%',
+              height: '100%',
               objectFit: 'cover',
               display: 'block',
               flexShrink: 0

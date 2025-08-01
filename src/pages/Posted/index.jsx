@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Card,
   CardHeader,
@@ -10,10 +10,14 @@ import {
   Box,
   Stack,
   Divider,
+  TextField,
+  Button,
+  IconButton,
 } from '@mui/material';
 import { LocationOn } from '@mui/icons-material';
 import WorkIcon from '@mui/icons-material/Work';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 
 const PostDetailCard = ({
   post = {
@@ -29,6 +33,9 @@ const PostDetailCard = ({
     createdAt: '2025-07-30',
   },
 }) => {
+  const [showCommentInput, setShowCommentInput] = useState(false);
+  const [comment, setComment] = useState('');
+
   return (
     <Card
       elevation={3}
@@ -107,6 +114,58 @@ const PostDetailCard = ({
         <Typography variant="caption" color="text.secondary" display="block" mt={3}>
           Ngày đăng: {post.createdAt}
         </Typography>
+
+        <Divider sx={{ my: 2 }} />
+
+        {/* Nút bình luận nhỏ */}
+        <Box mt={1}>
+          <Button
+            startIcon={<ChatBubbleOutlineIcon />}
+            onClick={() => setShowCommentInput((prev) => !prev)}
+            size="small"
+            sx={{
+              textTransform: 'none',
+              color: '#9C27B0',
+              fontWeight: 500,
+              '&:hover': {
+                bgcolor: 'rgba(156, 39, 176, 0.08)',
+              },
+            }}
+          >
+            Bình luận
+          </Button>
+        </Box>
+
+        {/* Hiện phần nhập bình luận */}
+        {showCommentInput && (
+          <Stack direction="row" spacing={1} mt={2}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Viết bình luận..."
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              sx={{
+                backgroundColor: '#f5f5f5',
+                borderRadius: 2,
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                },
+              }}
+            />
+            <Button
+              variant="contained"
+              sx={{ bgcolor: '#9C27B0', textTransform: 'none', borderRadius: 2 }}
+              onClick={() => {
+                console.log('Gửi bình luận:', comment);
+                setComment('');
+                setShowCommentInput(false);
+              }}
+            >
+              Gửi
+            </Button>
+          </Stack>
+        )}
       </CardContent>
     </Card>
   );

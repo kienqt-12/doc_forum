@@ -1,6 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import Box from '@mui/material/Box';
-import FavoriteBorderOutlinedIcon from '@mui/icons-material/FavoriteBorderOutlined';
 import PeopleIcon from '@mui/icons-material/People';
 import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsActiveOutlined';
 import Avatar from '@mui/material/Avatar';
@@ -17,6 +16,7 @@ import useNavigation from '../../hooks/useNavigation';
 import ClickAwayListener from '@mui/material/ClickAwayListener';
 import NotiDropdown from './NotiDropdown/notiDropdown';
 import FriendList from './Friendlist/friendlist';
+import ChatBox from '../ChatBox';
 
 function AppBar() {
   const { user, logout } = useAuth();
@@ -36,15 +36,17 @@ function AppBar() {
     handleMenuClose();
   };
 
-  // Dropdown Thông báo
   const [notiOpen, setNotiOpen] = useState(false);
   const toggleNotiDropdown = () => setNotiOpen((prev) => !prev);
   const handleClickAway = () => setNotiOpen(false);
 
-  // Dropdown Danh sách bạn bè
   const [friendOpen, setFriendOpen] = useState(false);
   const toggleFriendDropdown = () => setFriendOpen((prev) => !prev);
   const handleFriendClickAway = () => setFriendOpen(false);
+
+  const [chatFriend, setChatFriend] = useState(null);
+  const handleOpenChat = (friend) => setChatFriend(friend);
+  const handleCloseChat = () => setChatFriend(null);
 
   return (
     <Box
@@ -59,7 +61,7 @@ function AppBar() {
         zIndex: 1100,
       }}
     >
-      {/* Left: Logo */}
+      {/* Logo */}
       <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1.2, cursor: 'pointer' }}>
         <SvgIcon component={logo} inheritViewBox sx={{ color: '#fff', fontSize: 30 }} />
         <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#fff' }}>
@@ -67,10 +69,8 @@ function AppBar() {
         </Typography>
       </Box>
 
-      {/* Center: Search */}
       <SearchApp />
 
-      {/* Right: Icons + Avatar */}
       <Box
         sx={{
           flexGrow: 1,
@@ -80,7 +80,7 @@ function AppBar() {
           gap: 2,
         }}
       >
-        {/* Friend List Icon + Dropdown */}
+        {/* Friend Icon & Dropdown */}
         <ClickAwayListener onClickAway={handleFriendClickAway}>
           <Box sx={{ position: 'relative' }}>
             <Tooltip title="Đã theo dõi">
@@ -98,6 +98,7 @@ function AppBar() {
               />
             </Tooltip>
 
+            {/* FriendList */}
             {friendOpen && (
               <Box
                 sx={{
@@ -107,13 +108,27 @@ function AppBar() {
                   zIndex: 1500,
                 }}
               >
-                <FriendList />
+                <FriendList onChatClick={handleOpenChat} />
+              </Box>
+            )}
+
+            {/* ChatBox (luôn hiển thị phía trên) */}
+            {chatFriend && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: '120%',
+                  right: 360,
+                  zIndex: 1600, // >> Cao hơn friendList
+                }}
+              >
+                <ChatBox friend={chatFriend} onClose={handleCloseChat} />
               </Box>
             )}
           </Box>
         </ClickAwayListener>
 
-        {/* Notifications */}
+        {/* Notification */}
         <ClickAwayListener onClickAway={handleClickAway}>
           <Box sx={{ position: 'relative' }}>
             <Tooltip title="Thông báo">
@@ -148,7 +163,7 @@ function AppBar() {
           </Box>
         </ClickAwayListener>
 
-        {/* Avatar / Menu */}
+        {/* Avatar hoặc Đăng nhập */}
         {user ? (
           <>
             <Tooltip title={user.name}>
