@@ -1,9 +1,14 @@
 import express from 'express'
 import { postController } from '~/controllers/createPost'
+import { verifyFirebaseToken } from '~/middlewares/firebaseAuth'
 
-const Router = express.Router()
 
-Router.post('/', postController.createNew)
-Router.get('/', postController.getAll)
+const router = express.Router()
+router
+  .route('/')
+  .post( verifyFirebaseToken, postController.createPost);
 
-export const postRouter = Router
+// Lấy tất cả bài viết
+  router.route('/').
+  get(postController.getAllPosts); // 👈 THÊM DÒNG NÀY
+export const postRouter = router
