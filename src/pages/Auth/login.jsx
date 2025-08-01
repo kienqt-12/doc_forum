@@ -1,30 +1,20 @@
 import {
-  Box,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Avatar,
-  IconButton,
-  Stack,
+  Box, Paper, TextField, Button, Typography, Avatar,
+  IconButton, Stack
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import GoogleIcon from '@mui/icons-material/Google';
-import FacebookIcon from '@mui/icons-material/Facebook';
-import useNavigation from "../../hooks/useNavigation";
+import useNavigation from '../../hooks/useNavigation';
 import { useAuth } from '../../context/AuthContext';
 import { useEffect } from 'react';
 
-
-
 function Login() {
-  const { user, login, logout } = useAuth();
+  const { user, login } = useAuth();
   const { goHome } = useNavigation();
-   useEffect(() => {
-    if (user) {
-      goHome()
-    }
-  },[user]);
+
+  useEffect(() => {
+    if (user) goHome();
+  }, [user]);
 
   return (
     <Box
@@ -47,7 +37,6 @@ function Login() {
           flexDirection: 'column',
           alignItems: 'center',
           gap: 2,
-          backdropFilter: 'blur(10px)',
         }}
       >
         <Avatar sx={{ bgcolor: 'primary.main', width: 56, height: 56 }}>
@@ -57,31 +46,8 @@ function Login() {
           Đăng nhập
         </Typography>
 
-        <TextField
-          fullWidth
-          label="Email"
-          variant="outlined"
-          type="email"
-          size="small"
-        />
-        <TextField
-          fullWidth
-          label="Mật khẩu"
-          variant="outlined"
-          type="password"
-          size="small"
-        />
-        <Button
-          fullWidth
-          variant="contained"
-          color="primary"
-          sx={{ mt: 1, borderRadius: '8px' }}
-        >
-          Đăng nhập
-        </Button>
-
         <Typography variant="body2" color="text.secondary" mt={1}>
-          hoặc đăng nhập bằng
+          Đăng nhập nhanh với Google
         </Typography>
 
         <Stack direction="row" spacing={2}>
@@ -93,17 +59,7 @@ function Login() {
             }}
             onClick={login}
           >
-            
             <GoogleIcon color="error" />
-          </IconButton>
-          <IconButton
-            sx={{
-              backgroundColor: '#ffffff',
-              '&:hover': { backgroundColor: '#eeeeee' },
-              border: '1px solid #ddd',
-            }}
-          >
-            <FacebookIcon sx={{ color: '#1877F2' }} />
           </IconButton>
         </Stack>
 

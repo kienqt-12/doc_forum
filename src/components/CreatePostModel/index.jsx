@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -13,7 +13,7 @@ import {
   Autocomplete,
   Chip,
 } from '@mui/material';
-import { useAuth } from '../../context/AuthContext';
+import { getAuth } from 'firebase/auth';
 
 const CITIES = [
   'Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ',
@@ -21,8 +21,6 @@ const CITIES = [
 ];
 
 const CreatePostModal = ({ open, onClose, onSubmit }) => {
-  const { user } = useAuth(); // ✅ Lấy user từ context
-
   const [form, setForm] = useState({
     title: '',
     content: '',
@@ -69,18 +67,26 @@ const CreatePostModal = ({ open, onClose, onSubmit }) => {
 
   const handleSubmit = async () => {
     try {
+      const auth = getAuth();
+      const firebaseUser = auth.currentUser;
+
+      if (!firebaseUser) {
+        alert('Bạn cần đăng nhập để đăng bài!');
+        return;
+      }
+
+      const token = await firebaseUser.getIdToken();
+
       const postData = {
         ...form,
-        author: {
-          name: user?.name,
-          email: user?.email, 
-          avatar: user?.avatar 
-        }
       };
 
       const response = await fetch('http://localhost:8017/v1/posts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(postData),
       });
 
@@ -89,9 +95,8 @@ const CreatePostModal = ({ open, onClose, onSubmit }) => {
       const result = await response.json();
       console.log('✅ Post created:', result);
 
-      window.dispatchEvent(new Event('postCreated')); // Reload danh sách bài viết
+      window.dispatchEvent(new Event('postCreated'));
 
-      // Reset form & đóng modal
       setForm({
         title: '',
         content: '',
@@ -103,7 +108,6 @@ const CreatePostModal = ({ open, onClose, onSubmit }) => {
       });
       setPreviewMode(false);
       onClose();
-
       if (onSubmit) onSubmit(result);
     } catch (error) {
       console.error('❌ Lỗi khi tạo bài viết:', error);
