@@ -98,7 +98,6 @@ function AppBar() {
               />
             </Tooltip>
 
-            {/* FriendList */}
             {friendOpen && (
               <Box
                 sx={{
@@ -112,14 +111,13 @@ function AppBar() {
               </Box>
             )}
 
-            {/* ChatBox (luôn hiển thị phía trên) */}
             {chatFriend && (
               <Box
                 sx={{
                   position: 'absolute',
                   top: '120%',
                   right: 360,
-                  zIndex: 1600, // >> Cao hơn friendList
+                  zIndex: 1600,
                 }}
               >
                 <ChatBox friend={chatFriend} onClose={handleCloseChat} />
@@ -207,7 +205,12 @@ function AppBar() {
               transformOrigin={{ horizontal: 'right', vertical: 'top' }}
               anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
             >
-              <MenuItem onClick={goToProfile}>
+              <MenuItem
+                onClick={() => {
+                  goToProfile(user._id);
+                  handleMenuClose();
+                }}
+              >
                 <ListItemIcon>
                   <Person fontSize="small" />
                 </ListItemIcon>
@@ -220,7 +223,7 @@ function AppBar() {
                 Cài đặt
               </MenuItem>
               <Divider />
-              <MenuItem onClick={logout}>
+              <MenuItem onClick={handleLogout}>
                 <ListItemIcon>
                   <Logout fontSize="small" />
                 </ListItemIcon>

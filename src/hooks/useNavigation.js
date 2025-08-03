@@ -5,9 +5,9 @@ export default function useNavigation() {
 
   return {
     goToPostDetail: () => navigate("/postdetail"),
-    goToProfile: () => navigate("/profile"),
     goToDashboard: () => navigate("/dashboard"),
     goToLogin: () => navigate("/login"),
     goHome: () => navigate("/"),
+    goToProfile: (userId) => navigate(`/profile/${userId}`)
   };
 }

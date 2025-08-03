@@ -11,19 +11,25 @@ import {
   Divider,
   Stack
 } from '@mui/material';
-import { Favorite, FavoriteBorder, Share, Comment, Visibility } from '@mui/icons-material';
+import {
+  Favorite,
+  FavoriteBorder,
+  Share,
+  Comment,
+  Visibility
+} from '@mui/icons-material';
 import useNavigation from '../../hooks/useNavigation';
 import { useAuth } from '../../context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import PostDetailModal from '../PostDetail'; // 👉 nhớ kiểm tra đúng path import
+import PostDetailModal from '../PostDetail';
 
 function PostList() {
   const [posts, setPosts] = useState([]);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [selectedPost, setSelectedPost] = useState(null); // 👉 new state
+  const [selectedPost, setSelectedPost] = useState(null);
 
-  const { goToLogin } = useNavigation();
+  const { goToLogin, goToProfile } = useNavigation(); // goToProfile sẽ dùng navigate(`/profile/${userId}`)
   const { user } = useAuth();
 
   const fetchPosts = async () => {
@@ -83,13 +89,20 @@ function PostList() {
       setTimeout(() => goToLogin(), 1000);
       return;
     }
-    setSelectedPost(post); // 👉 mở modal
+    setSelectedPost(post);
   };
 
   const handleCloseModal = () => setSelectedPost(null);
 
   const handleCommentClick = (postId) => {
     console.log(`Mở bình luận cho bài post ${postId}`);
+  };
+
+  const handleAvatarClick = (e, post) => {
+    e.stopPropagation();
+    if (post.author?._id) {
+      goToProfile(post.author._id);
+    }
   };
 
   return (
@@ -113,7 +126,23 @@ function PostList() {
             }}
           >
             <Box sx={{ p: 2 }}>
-              <Avatar src={post.image} alt={post.title} sx={{ width: 56, height: 56 }} />
+              <Avatar
+                src={post.image}
+                alt={post.title}
+                sx={{
+                  width: 56,
+                  height: 56,
+                  cursor: 'pointer',
+                  border: '2px solid transparent',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    borderColor: '#BC3AAA', // màu chủ đạo khi hover
+                    transform: 'scale(1.05)'
+                  }
+                }}
+                onClick={(e) => handleAvatarClick(e, post)}
+              />
+
             </Box>
 
             <CardContent sx={{ flex: 1, p: 2, pt: 2 }}>
@@ -141,7 +170,13 @@ function PostList() {
                     precision={0.5}
                     sx={{ fontSize: '1rem', color: '#FFD700' }}
                   />
-                  <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleCommentClick(post.id); }}>
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCommentClick(post.id);
+                    }}
+                  >
                     <Comment sx={{ fontSize: 18, color: '#FE5E7E' }} />
                   </IconButton>
                   <Checkbox
