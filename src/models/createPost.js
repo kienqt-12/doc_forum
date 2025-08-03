@@ -1,5 +1,6 @@
 // src/models/createPost.js
 import { GET_DB } from '~/config/mongodb'
+import { ObjectId } from 'mongodb';
 
 const POST_COLLECTION_NAME = 'posts'
 
@@ -21,5 +22,8 @@ export const PostModel = {
       .toArray()
 
     return result
+  },
+  async findByUserId(userId) {
+    return await GET_DB().collection(POST_COLLECTION_NAME).find({ 'author._id': new ObjectId(userId) }).toArray();
   }
 }
