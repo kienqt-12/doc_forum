@@ -3,8 +3,11 @@ import serviceAccount from './serviceAcount.json' // đường dẫn đến file
 
 if (!admin.apps.length) {
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+    credential: admin.credential.cert(serviceAccount),
+    storageBucket: 'doc-forum.firebasestorage.app' // ✅ Bổ sung dòng này
   })
 }
 
-export default admin
+const bucket = admin.storage().bucket() // Dùng để upload ảnh
+
+export { admin, bucket }

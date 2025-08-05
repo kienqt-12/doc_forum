@@ -24,6 +24,6 @@ export const PostModel = {
     return result
   },
   async findByUserId(userId) {
-    return await GET_DB().collection(POST_COLLECTION_NAME).find({ 'author._id': new ObjectId(userId) }).toArray();
+    return await GET_DB().collection(POST_COLLECTION_NAME).find({ 'author._id': userId }).toArray();
   }
 }

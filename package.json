@@ -24,7 +24,8 @@
     "firebase-admin": "^13.4.0",
     "http-status-codes": "^2.3.0",
     "joi": "^17.10.2",
-    "mongodb": "^6.0.0"
+    "mongodb": "^6.0.0",
+    "mongoose": "^8.17.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.22.10",
