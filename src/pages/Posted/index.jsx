@@ -28,9 +28,12 @@ const PostDetailCard = ({
     workplace: 'BV Da Liễu Trung Ương',
     city: 'Hà Nội',
     rating: 4.5,
-    avatar: '',
     hashtags: ['Da liễu', 'Chăm sóc da'],
     createdAt: '2025-07-30',
+    author: {
+      name: 'Người dùng mặc định',
+      avatar: '', // fallback nếu không có avatar
+    },
   },
 }) => {
   const [showCommentInput, setShowCommentInput] = useState(false);
@@ -51,8 +54,12 @@ const PostDetailCard = ({
     >
       <CardHeader
         avatar={
-          <Avatar sx={{ bgcolor: '#FE5E7E' }} src={post.avatar}>
-            {post.doctor?.[0] || <LocalHospitalIcon />}
+          <Avatar
+            sx={{ bgcolor: '#FE5E7E' }}
+            src={post.author?.avatar || ''}
+            alt={post.author?.name || 'Người dùng'}
+          >
+            {post.author?.name?.[0] || <LocalHospitalIcon />}
           </Avatar>
         }
         title={
@@ -112,7 +119,11 @@ const PostDetailCard = ({
         )}
 
         <Typography variant="caption" color="text.secondary" display="block" mt={3}>
-          Ngày đăng: {post.createdAt}
+          Ngày đăng: {new Date(post.createdAt).toLocaleDateString()}
+        </Typography>
+
+        <Typography variant="caption" color="text.secondary" display="block" mt={1}>
+          Được đăng bởi: <strong>{post.author?.name || 'Người dùng ẩn danh'}</strong>
         </Typography>
 
         <Divider sx={{ my: 2 }} />

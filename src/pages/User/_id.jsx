@@ -18,8 +18,8 @@ import AppBar from '~/components/Appbar';
 const ProfilePage = () => {
   const { userId } = useParams();
   const navigate = useNavigate();
-  const token = localStorage.getItem('token'); // cần có token để xác thực
-  const currentUserId = localStorage.getItem('userId'); // lưu từ khi đăng nhập
+  const token = localStorage.getItem('token');
+  const currentUserId = String(localStorage.getItem('userId'));
 
   const [tab, setTab] = useState(0);
   const [user, setUser] = useState(null);
@@ -93,6 +93,7 @@ const ProfilePage = () => {
   };
 
   const handleFollow = async () => {
+    if (!user || !user._id) return;
     try {
       await fetch(`http://localhost:8017/v1/users/${user._id}/follow`, {
         method: 'POST',
@@ -109,6 +110,8 @@ const ProfilePage = () => {
       console.error('❌ Follow lỗi:', err);
     }
   };
+
+  const isOwnProfile = user && user._id === currentUserId;
 
   if (loading) {
     return (
@@ -131,11 +134,10 @@ const ProfilePage = () => {
       <AppBar />
 
       <Container maxWidth="md" sx={{ mt: 4, mb: 6 }}>
-        {/* Thông tin cá nhân */}
-        <Stack direction="row" spacing={2} alignItems="center">
+        <Stack direction="row" spacing={3} alignItems="center" sx={{ p: 2, backgroundColor: '#fff', borderRadius: 3, boxShadow: 2 }}>
           <Avatar
             src={user.avatar || 'https://i.pravatar.cc/150?u=default'}
-            sx={{ width: 96, height: 96, border: '2px solid #fff', boxShadow: 2 }}
+            sx={{ width: 96, height: 96, border: '3px solid #fff', boxShadow: 3 }}
           />
           <Box>
             <Typography variant="h6" fontWeight={700} color="#BC3AAA">
@@ -143,56 +145,63 @@ const ProfilePage = () => {
             </Typography>
             <Stack direction="row" spacing={2} mt={0.5}>
               <Typography variant="body2" color="text.secondary">
-                📄 {posts.length} bài viết
+                📝 {posts.length} bài viết
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 👥 {(user.followers || 0).toLocaleString()} theo dõi
               </Typography>
             </Stack>
-            {user._id !== currentUserId && (
+            {!isOwnProfile && (
               <Button
                 variant="contained"
-                color="secondary"
                 size="small"
-                sx={{ mt: 1 }}
+                sx={{
+                  mt: 1,
+                  backgroundColor: user.isFollowing ? '#ccc' : '#FE5E7E',
+                  color: '#fff',
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  borderRadius: 2,
+                  px: 2,
+                  '&:hover': {
+                    backgroundColor: '#e74870'
+                  }
+                }}
                 onClick={handleFollow}
               >
-                {user.isFollowing ? 'Bỏ theo dõi' : 'Theo dõi'}
+                {user.isFollowing ? '🚫 Huỷ kết bạn' : '🤝 Kết bạn'}
               </Button>
             )}
           </Box>
         </Stack>
 
-        {/* Tabs */}
-        <Box sx={{ mt: 3 }}>
-          <Tabs
-            value={tab}
-            onChange={(e, newVal) => setTab(newVal)}
-            variant="fullWidth"
-            textColor="secondary"
-            indicatorColor="secondary"
-            sx={{
-              '& .MuiTab-root': {
-                textTransform: 'none',
-                fontWeight: 600,
-                fontSize: 15,
-                color: '#FE5E7E'
-              },
-              '& .Mui-selected': {
-                color: '#BC3AAA'
-              },
-              '& .MuiTabs-indicator': {
-                backgroundColor: '#FE5E7E'
-              }
-            }}
-          >
-            <Tab label="Bài viết" />
-            <Tab label="Giới thiệu" />
-          </Tabs>
-          <Divider sx={{ mt: -1, opacity: 0.3 }} />
-        </Box>
+        <Tabs
+          value={tab}
+          onChange={(e, newVal) => setTab(newVal)}
+          variant="fullWidth"
+          textColor="secondary"
+          indicatorColor="secondary"
+          sx={{
+            '& .MuiTab-root': {
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: 15,
+              color: '#999'
+            },
+            '& .Mui-selected': {
+              color: '#FE5E7E'
+            },
+            '& .MuiTabs-indicator': {
+              backgroundColor: '#FE5E7E'
+            },
+            mt: 3
+          }}
+        >
+          <Tab label="Bài viết" />
+          <Tab label="Giới thiệu" />
+        </Tabs>
+        <Divider sx={{ mt: -1, opacity: 0.3 }} />
 
-        {/* Nội dung tab */}
         <Box sx={{ mt: 3 }}>
           {tab === 0 && (
             <Stack spacing={2}>
@@ -202,14 +211,16 @@ const ProfilePage = () => {
                   variant="outlined"
                   sx={{
                     p: 2,
-                    borderRadius: 2,
-                    borderLeft: '4px solid #FE5E7E',
-                    backgroundColor: '#fff'
+                    borderRadius: 3,
+                    borderLeft: '5px solid #FE5E7E',
+                    backgroundColor: '#fff',
+                    boxShadow: 1
                   }}
                 >
-                  <Typography fontWeight="bold" color="#FE5E7E">
+                  <Typography fontWeight={600} color="#FE5E7E" fontSize={17}>
                     {post.title}
                   </Typography>
+
                   {post.image && (
                     <Box
                       component="img"
@@ -219,12 +230,14 @@ const ProfilePage = () => {
                         width: '100%',
                         maxHeight: 300,
                         objectFit: 'cover',
-                        borderRadius: 1,
+                        borderRadius: 2,
                         mt: 1,
-                        mb: 1
+                        mb: 1,
+                        boxShadow: 2
                       }}
                     />
                   )}
+
                   <Typography color="text.secondary" fontSize={14}>
                     {post.content || 'Không có nội dung.'}
                   </Typography>
@@ -233,17 +246,32 @@ const ProfilePage = () => {
                     <Typography variant="caption" color="text.secondary">
                       💬 {post.commentsCount || 0} bình luận
                     </Typography>
-                    <Button size="small" onClick={() => handleLike(post._id)}>
+                    <Button
+                      size="small"
+                      sx={{ textTransform: 'none', color: '#BC3AAA' }}
+                      onClick={() => handleLike(post._id)}
+                    >
                       ❤️ {post.likesCount || 0}
                     </Button>
                   </Stack>
 
                   {post.author?._id === currentUserId && (
                     <Stack direction="row" spacing={1} mt={1}>
-                      <Button size="small" variant="outlined" onClick={() => handleEdit(post)}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        sx={{ textTransform: 'none', borderRadius: 2 }}
+                        onClick={() => handleEdit(post)}
+                      >
                         ✏️ Sửa
                       </Button>
-                      <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(post._id)}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        color="error"
+                        sx={{ textTransform: 'none', borderRadius: 2 }}
+                        onClick={() => handleDelete(post._id)}
+                      >
                         🗑️ Xoá
                       </Button>
                     </Stack>

@@ -9,14 +9,14 @@ import {
   Checkbox,
   Rating,
   Divider,
-  Stack
+  Stack,
 } from '@mui/material';
 import {
   Favorite,
   FavoriteBorder,
   Share,
   Comment,
-  Visibility
+  Visibility,
 } from '@mui/icons-material';
 import useNavigation from '../../hooks/useNavigation';
 import { useAuth } from '../../context/AuthContext';
@@ -29,7 +29,7 @@ function PostList() {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
 
-  const { goToLogin, goToProfile } = useNavigation(); // goToProfile sẽ dùng navigate(`/profile/${userId}`)
+  const { goToLogin, goToProfile } = useNavigation();
   const { user } = useAuth();
 
   const fetchPosts = async () => {
@@ -65,7 +65,8 @@ function PostList() {
           comments: post.comments || 0,
           views: post.views || 0,
           rating: post.rating || 4,
-          image
+          image,
+          imageUrl: post.imageUrl || '',
         };
       });
 
@@ -77,7 +78,6 @@ function PostList() {
 
   useEffect(() => {
     fetchPosts();
-
     const handleNewPost = () => fetchPosts();
     window.addEventListener('postCreated', handleNewPost);
     return () => window.removeEventListener('postCreated', handleNewPost);
@@ -93,82 +93,117 @@ function PostList() {
   };
 
   const handleCloseModal = () => setSelectedPost(null);
-
-  const handleCommentClick = (postId) => {
-    console.log(`Mở bình luận cho bài post ${postId}`);
-  };
-
+  const handleCommentClick = (postId) => console.log(`Mở bình luận cho bài post ${postId}`);
   const handleAvatarClick = (e, post) => {
     e.stopPropagation();
-    if (post.author?._id) {
-      goToProfile(post.author._id);
-    }
+    if (post.author?._id) goToProfile(post.author._id);
   };
 
   return (
-    <>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, px: 2, pt: 2 }}>
-        {posts.map((post) => (
-          <Card
-            key={post.id}
-            onClick={() => handleCardClick(post)}
-            sx={{
-              display: 'flex',
-              flexDirection: 'row',
-              borderRadius: 3,
-              boxShadow: '0 4px 10px rgba(0, 0, 0, 0.06)',
-              bgcolor: '#fff',
-              transition: '0.3s',
-              '&:hover': {
-                boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12)',
-                transform: 'translateY(-2px)'
-              }
-            }}
-          >
-            <Box sx={{ p: 2 }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, px: 3, pt: 3 }}>
+      {posts.map((post) => (
+        <Card
+          key={post.id}
+          onClick={() => handleCardClick(post)}
+          sx={{
+            display: 'flex',
+            flexDirection: 'row',
+            borderRadius: '16px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+            bgcolor: '#fff',
+            border: '1px solid #BC3AAA',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+              transform: 'translateY(-4px)',
+            },
+            overflow: 'hidden',
+          }}
+        >
+          {/* Ảnh bài viết bên trái */}
+          {post.imageUrl && (
+            <Box
+              sx={{
+                width: 160,
+                height: 180,
+                borderTopLeftRadius: '16px',
+                borderBottomLeftRadius: '16px',
+                overflow: 'hidden',
+                borderRight: '2px solid #BC3AAA',
+              }}
+            >
+              <img
+                src={post.imageUrl}
+                alt="Ảnh bài viết"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
+              />
+            </Box>
+          )}
+
+          {/* Nội dung + avatar */}
+          <Box sx={{ display: 'flex', flex: 1, paddingLeft: '40px' }}>
+            {/* Avatar tác giả */}
+            <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
               <Avatar
                 src={post.image}
-                alt={post.title}
+                alt={post.author?.name || 'Author'}
                 sx={{
-                  width: 56,
-                  height: 56,
+                  width: 60,
+                  height: 60,
                   cursor: 'pointer',
                   border: '2px solid transparent',
                   transition: 'all 0.3s ease',
                   '&:hover': {
-                    borderColor: '#BC3AAA', // màu chủ đạo khi hover
-                    transform: 'scale(1.05)'
-                  }
+                    borderColor: '#BC3AAA',
+                    transform: 'scale(1.1)',
+                  },
                 }}
                 onClick={(e) => handleAvatarClick(e, post)}
               />
-
             </Box>
 
-            <CardContent sx={{ flex: 1, p: 2, pt: 2 }}>
+            {/* Nội dung bài viết */}
+            <CardContent sx={{ flex: 1, p: 2, pt: 3 }}>
               <Box
                 sx={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'flex-start',
-                  flexWrap: 'wrap'
+                  flexWrap: 'wrap',
+                  gap: 2,
                 }}
               >
                 <Box>
-                  <Typography variant="h6" sx={{ fontSize: '1rem', color: '#333', fontWeight: 600 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontSize: '1.1rem',
+                      color: '#1a1a1a',
+                      fontWeight: 600,
+                      lineHeight: 1.4,
+                    }}
+                  >
                     {post.title}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: 'gray', fontStyle: 'italic' }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: '#666', fontStyle: 'italic', fontSize: '0.8rem' }}
+                  >
                     {post.hoursAgo}
                   </Typography>
                 </Box>
 
-                <Stack direction="row" spacing={1} alignItems="center">
+                <Stack direction="row" spacing={1.5} alignItems="center">
                   <Rating
                     value={post.rating}
                     readOnly
                     precision={0.5}
-                    sx={{ fontSize: '1rem', color: '#FFD700' }}
+                    sx={{ fontSize: '1.1rem', color: '#FFD700' }}
                   />
                   <IconButton
                     size="small"
@@ -176,43 +211,48 @@ function PostList() {
                       e.stopPropagation();
                       handleCommentClick(post.id);
                     }}
+                    sx={{ '&:hover': { color: '#BC3AAA' } }}
                   >
-                    <Comment sx={{ fontSize: 18, color: '#FE5E7E' }} />
+                    <Comment sx={{ fontSize: 20, color: '#FE5E7E' }} />
                   </IconButton>
                   <Checkbox
-                    icon={<FavoriteBorder sx={{ fontSize: 18, color: '#FE5E7E' }} />}
-                    checkedIcon={<Favorite sx={{ fontSize: 18, color: '#BC3AAA' }} />}
+                    icon={<FavoriteBorder sx={{ fontSize: 20, color: '#FE5E7E' }} />}
+                    checkedIcon={<Favorite sx={{ fontSize: 20, color: '#BC3AAA' }} />}
                     sx={{ p: 0 }}
                     onClick={(e) => e.stopPropagation()}
                   />
-                  <IconButton size="small" onClick={(e) => e.stopPropagation()}>
-                    <Share sx={{ fontSize: 18, color: '#FE5E7E' }} />
+                  <IconButton
+                    size="small"
+                    onClick={(e) => e.stopPropagation()}
+                    sx={{ '&:hover': { color: '#BC3AAA' } }}
+                  >
+                    <Share sx={{ fontSize: 20, color: '#FE5E7E' }} />
                   </IconButton>
                 </Stack>
               </Box>
 
-              <Divider sx={{ my: 1 }} />
+              <Divider sx={{ my: 2, borderColor: '#eee' }} />
 
-              <Box sx={{ display: 'flex', gap: 3, color: '#666' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Comment sx={{ fontSize: 16 }} />
-                  <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+              <Box sx={{ display: 'flex', gap: 4, color: '#666' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Comment sx={{ fontSize: 18 }} />
+                  <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
                     {post.comments} bình luận
                   </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Visibility sx={{ fontSize: 16 }} />
-                  <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Visibility sx={{ fontSize: 18 }} />
+                  <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
                     {post.views} lượt xem
                   </Typography>
                 </Box>
               </Box>
             </CardContent>
-          </Card>
-        ))}
-      </Box>
+          </Box>
+        </Card>
+      ))}
 
-      {/* ✅ Modal Chi Tiết Bài Viết */}
+      {/* Modal chi tiết bài viết */}
       {selectedPost && (
         <PostDetailModal
           open={Boolean(selectedPost)}
@@ -220,7 +260,7 @@ function PostList() {
           post={selectedPost}
         />
       )}
-    </>
+    </Box>
   );
 }
 

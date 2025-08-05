@@ -17,7 +17,7 @@ export function AuthProvider({ children }) {
     try {
       const token = await firebaseUser.getIdToken();
 
-      const res = await fetch('http://localhost:8017/v1/users', {
+      const res = await fetch('http://localhost:8017/v1/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
