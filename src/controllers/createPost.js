@@ -53,6 +53,74 @@ export const postController = {
       console.error('❌ Lỗi khi lấy bài viết theo user:', error)
       return res.status(500).json({ error: error.message })
     }
+  },
+  async likePost(req, res) {
+    try {
+      const { postId } = req.params
+      const userId = req.user._id
+
+      const post = await PostModel.findById(postId)
+      if (!post) {
+        return res.status(404).json({ message: 'Không tìm thấy bài viết' })
+      }
+
+      const hasLiked = post.likes?.some((id) => id.toString() === userId.toString())
+
+      let updatedPost
+      if (hasLiked) {
+        updatedPost = await PostModel.unlikePost(postId, userId)
+      } else {
+        updatedPost = await PostModel.likePost(postId, userId)
+      }
+
+      return res.status(200).json({
+        liked: !hasLiked,
+        totalLikes: updatedPost.likes?.length || 0,
+        message: hasLiked ? 'Đã bỏ like' : 'Đã like'
+      })
+    } catch (error) {
+      console.error('❌ Lỗi khi like bài viết:', error)
+      return res.status(500).json({ message: error.message })
+    }
+  },
+  async addComment(req, res) {
+    try {
+      const { postId } = req.params
+      const { content } = req.body
+      const { _id, name, avatar } = req.user
+
+      if (!content || !content.trim()) {
+        return res.status(400).json({ message: 'Nội dung không được để trống' })
+      }
+
+      const commentData = {
+        user: { _id, name, avatar },
+        content
+      }
+
+      const newComment = await PostModel.addComment(postId, commentData)
+
+      return res.status(201).json({ comment: newComment })
+    } catch (error) {
+      console.error('❌ Lỗi khi thêm bình luận:', error)
+      return res.status(500).json({ message: error.message })
+    }
+  },
+
+  async getPostById(req, res) {
+    try {
+      const { postId } = req.params;
+      const post = await PostModel.findById(postId);
+
+      if (!post) {
+        return res.status(404).json({ message: 'Không tìm thấy bài viết' });
+      }
+
+      return res.status(200).json(post);
+    } catch (error) {
+      console.error('❌ Lỗi khi lấy chi tiết bài viết:', error);
+      return res.status(500).json({ message: error.message });
+    }
   }
 
 }
