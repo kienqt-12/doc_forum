@@ -1,22 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Avatar,
-  IconButton,
-  Checkbox,
-  Rating,
-  Divider,
-  Stack,
+  Box, Card, CardContent, Typography, Avatar,
+  IconButton, Rating, Divider, Stack
 } from '@mui/material';
 import {
-  Favorite,
-  FavoriteBorder,
-  Share,
-  Comment,
-  Visibility,
+  Favorite, FavoriteBorder, Share,
+  Comment, Visibility
 } from '@mui/icons-material';
 import useNavigation from '../../hooks/useNavigation';
 import { useAuth } from '../../context/AuthContext';
@@ -58,15 +47,20 @@ function PostList() {
         const createdAt = post?.createdAt ? new Date(post.createdAt) : new Date();
         const hoursAgo = formatDistanceToNow(createdAt, { addSuffix: true, locale: vi });
 
+        const likesArray = post.likes || [];
+        const isLiked = user ? likesArray.includes(user._id) : false;
+
         return {
           ...post,
           id: post._id,
           hoursAgo,
-          comments: post.comments || 0,
+          comments: post.comments?.length || 0,
           views: post.views || 0,
           rating: post.rating || 4,
           image,
           imageUrl: post.imageUrl || '',
+          likesCount: likesArray.length,
+          isLiked
         };
       });
 
@@ -89,14 +83,81 @@ function PostList() {
       setTimeout(() => goToLogin(), 1000);
       return;
     }
-    setSelectedPost(post);
+
+    // ✅ Thêm currentUserId vào post để truyền vào Modal
+    setSelectedPost({
+      ...post,
+      currentUserId: user._id
+    });
   };
 
   const handleCloseModal = () => setSelectedPost(null);
-  const handleCommentClick = (postId) => console.log(`Mở bình luận cho bài post ${postId}`);
+
   const handleAvatarClick = (e, post) => {
     e.stopPropagation();
     if (post.author?._id) goToProfile(post.author._id);
+  };
+
+  const handleLike = async (e, post) => {
+    e.stopPropagation();
+    if (!user) {
+      setSnackbarOpen(true);
+      setTimeout(() => goToLogin(), 1000);
+      return;
+    }
+
+    try {
+      const res = await fetch(`http://localhost:8017/v1/posts/${post.id}/like`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${user.token}`
+        }
+      });
+
+      if (!res.ok) throw new Error('Lỗi khi like bài viết');
+
+      const updatedPosts = posts.map((p) =>
+        p.id === post.id
+          ? {
+              ...p,
+              isLiked: !p.isLiked,
+              likesCount: p.isLiked ? p.likesCount - 1 : p.likesCount + 1
+            }
+          : p
+      );
+
+      setPosts(updatedPosts);
+    } catch (err) {
+      console.error('❌ Like error:', err);
+    }
+  };
+
+  // ✅ Nhận post mới từ Modal sau khi comment và cập nhật lại danh sách
+  const handleUpdatePost = (updatedPost) => {
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === updatedPost._id
+          ? {
+              ...p,
+              ...updatedPost,
+              comments: updatedPost.comments?.length || 0,
+              likesCount: updatedPost.likes?.length || 0,
+              isLiked: updatedPost.likes?.includes(user._id)
+            }
+          : p
+      )
+    );
+
+    // ✅ Cập nhật lại modal nếu đang mở
+    setSelectedPost((prev) =>
+      prev?._id === updatedPost._id
+        ? {
+            ...updatedPost,
+            currentUserId: user._id
+          }
+        : prev
+    );
   };
 
   return (
@@ -115,39 +176,18 @@ function PostList() {
             transition: 'all 0.3s ease',
             '&:hover': {
               boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
-              transform: 'translateY(-4px)',
+              transform: 'translateY(-4px)'
             },
-            overflow: 'hidden',
+            overflow: 'hidden'
           }}
         >
-          {/* Ảnh bài viết bên trái */}
           {post.imageUrl && (
-            <Box
-              sx={{
-                width: 160,
-                height: 180,
-                borderTopLeftRadius: '16px',
-                borderBottomLeftRadius: '16px',
-                overflow: 'hidden',
-                borderRight: '2px solid #BC3AAA',
-              }}
-            >
-              <img
-                src={post.imageUrl}
-                alt="Ảnh bài viết"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  display: 'block',
-                }}
-              />
+            <Box sx={{ width: 160, height: 180, borderRight: '2px solid #BC3AAA' }}>
+              <img src={post.imageUrl} alt="Ảnh bài viết" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </Box>
           )}
 
-          {/* Nội dung + avatar */}
           <Box sx={{ display: 'flex', flex: 1, paddingLeft: '40px' }}>
-            {/* Avatar tác giả */}
             <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
               <Avatar
                 src={post.image}
@@ -160,78 +200,44 @@ function PostList() {
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     borderColor: '#BC3AAA',
-                    transform: 'scale(1.1)',
-                  },
+                    transform: 'scale(1.1)'
+                  }
                 }}
                 onClick={(e) => handleAvatarClick(e, post)}
               />
             </Box>
 
-            {/* Nội dung bài viết */}
             <CardContent sx={{ flex: 1, p: 2, pt: 3 }}>
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  flexWrap: 'wrap',
-                  gap: 2,
-                }}
-              >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
                 <Box>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontSize: '1.1rem',
-                      color: '#1a1a1a',
-                      fontWeight: 600,
-                      lineHeight: 1.4,
-                    }}
-                  >
+                  <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
                     {post.title}
                   </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{ color: '#666', fontStyle: 'italic', fontSize: '0.8rem' }}
-                  >
+                  <Typography variant="caption" sx={{ color: '#666' }}>
                     {post.hoursAgo}
                   </Typography>
                 </Box>
 
                 <Stack direction="row" spacing={1.5} alignItems="center">
-                  <Rating
-                    value={post.rating}
-                    readOnly
-                    precision={0.5}
-                    sx={{ fontSize: '1.1rem', color: '#FFD700' }}
-                  />
-                  <IconButton
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCommentClick(post.id);
-                    }}
-                    sx={{ '&:hover': { color: '#BC3AAA' } }}
-                  >
+                  <Rating value={post.rating} readOnly precision={0.5} sx={{ fontSize: '1.1rem', color: '#FFD700' }} />
+                  <IconButton size="small" sx={{ '&:hover': { color: '#BC3AAA' } }}>
                     <Comment sx={{ fontSize: 20, color: '#FE5E7E' }} />
                   </IconButton>
-                  <Checkbox
-                    icon={<FavoriteBorder sx={{ fontSize: 20, color: '#FE5E7E' }} />}
-                    checkedIcon={<Favorite sx={{ fontSize: 20, color: '#BC3AAA' }} />}
-                    sx={{ p: 0 }}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <IconButton
-                    size="small"
-                    onClick={(e) => e.stopPropagation()}
-                    sx={{ '&:hover': { color: '#BC3AAA' } }}
-                  >
+                  <IconButton size="small" onClick={(e) => handleLike(e, post)} sx={{ '&:hover': { color: '#BC3AAA' } }}>
+                    {post.isLiked ? (
+                      <Favorite sx={{ fontSize: 20, color: '#BC3AAA' }} />
+                    ) : (
+                      <FavoriteBorder sx={{ fontSize: 20, color: '#FE5E7E' }} />
+                    )}
+                  </IconButton>
+                  <Typography variant="caption">{post.likesCount}</Typography>
+                  <IconButton size="small" sx={{ '&:hover': { color: '#BC3AAA' } }}>
                     <Share sx={{ fontSize: 20, color: '#FE5E7E' }} />
                   </IconButton>
                 </Stack>
               </Box>
 
-              <Divider sx={{ my: 2, borderColor: '#eee' }} />
+              <Divider sx={{ my: 2 }} />
 
               <Box sx={{ display: 'flex', gap: 4, color: '#666' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -252,12 +258,12 @@ function PostList() {
         </Card>
       ))}
 
-      {/* Modal chi tiết bài viết */}
       {selectedPost && (
         <PostDetailModal
           open={Boolean(selectedPost)}
           onClose={handleCloseModal}
           post={selectedPost}
+          onUpdatePost={handleUpdatePost} // ✅ Truyền callback cập nhật lại bài viết
         />
       )}
     </Box>

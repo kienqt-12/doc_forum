@@ -86,7 +86,7 @@ const CreatePostModal = ({ open, onClose, onSubmit }) => {
       });
 
       if (!res.ok) throw new Error('Tạo bài viết thất bại');
-
+      window.dispatchEvent(new Event('postCreated'));
       const result = await res.json();
       if (onSubmit) onSubmit(result);
 
