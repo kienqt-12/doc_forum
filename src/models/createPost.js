@@ -30,22 +30,24 @@ export const PostModel = {
     const db = GET_DB();
     const result = await db.collection('posts').findOne({ _id: new ObjectId(postId) });
 
-    // ❗ Đảm bảo mỗi comment có user, content, createdAt (không null/undefined)
     if (result?.comments) {
-      result.comments = result.comments.map((c) => ({
-        ...c,
-        _id: c._id.toString(),
-        user: {
-          _id: c.user._id.toString(),
-          name: c.user.name,
-          avatar: c.user.avatar
-        },
-        createdAt: c.createdAt
-      }));
+      // Sắp xếp comment theo thời gian mới nhất trước
+      result.comments = result.comments
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .map((c) => ({
+          ...c,
+          _id: c._id.toString(),
+          user: {
+            _id: c.user._id.toString(),
+            name: c.user.name,
+            avatar: c.user.avatar
+          },
+          createdAt: c.createdAt
+        }));
     }
-    return result
-  },
 
+    return result;
+  },
   async likePost(postId, userId) {
     const db = GET_DB()
     await db.collection('posts').updateOne(
@@ -96,5 +98,45 @@ export const PostModel = {
         _id: newComment.user._id.toString()
       }
     };
+  },
+  async addReply(postId, commentId, replyData) {
+    const db = GET_DB();
+
+    const newReply = {
+      _id: new ObjectId(),
+      user: {
+        _id: new ObjectId(replyData.user._id),
+        name: replyData.user.name,
+        avatar: replyData.user.avatar
+      },
+      content: replyData.content,
+      createdAt: new Date()
+    };
+
+    const result = await db.collection('posts').updateOne(
+      {
+        _id: new ObjectId(postId),
+        'comments._id': new ObjectId(commentId)
+      },
+      {
+        $push: {
+          'comments.$.replies': newReply
+        }
+      }
+    );
+
+    if (result.modifiedCount === 0) {
+      throw new Error('Không thể thêm trả lời, bình luận không tồn tại');
+    }
+
+    return {
+      ...newReply,
+      _id: newReply._id.toString(),
+      user: {
+        ...newReply.user,
+        _id: newReply.user._id.toString()
+      }
+    };
   }
+
 }

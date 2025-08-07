@@ -106,7 +106,29 @@ export const postController = {
       return res.status(500).json({ message: error.message })
     }
   },
+  async replyComment(req, res) {
+    try {
+      const { postId, commentId } = req.params;
+      const { content } = req.body;
+      const { _id, name, avatar } = req.user;
 
+      if (!content || !content.trim()) {
+        return res.status(400).json({ message: 'Nội dung không được để trống' });
+      }
+
+      const replyData = {
+        user: { _id, name, avatar },
+        content
+      };
+
+      const newReply = await PostModel.addReply(postId, commentId, replyData);
+
+      return res.status(201).json({ reply: newReply });
+    } catch (error) {
+      console.error('❌ Lỗi khi trả lời bình luận:', error);
+      return res.status(500).json({ message: error.message });
+    }
+  },
   async getPostById(req, res) {
     try {
       const { postId } = req.params;

@@ -28,6 +28,7 @@ Router.route('/')
 
       return res.status(StatusCodes.OK).json({ user })
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Login error:', error)
       return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Lỗi server khi login' })
     }

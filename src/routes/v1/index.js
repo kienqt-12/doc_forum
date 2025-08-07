@@ -2,7 +2,7 @@ import express from 'express'
 import { StatusCodes } from 'http-status-codes'
 import { loginRouter } from './loginRouters.js'
 import { userRouter } from './userRouters.js'
-import { postRouter } from './createPostRouters.js';
+import { postRouter } from './createPostRouters.js'
 
 const router = express.Router()
 
