@@ -1,31 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Card, CardContent, Typography, Avatar,
-  IconButton, Rating, Divider, Stack
+  IconButton, Rating, Divider, Stack, TextField, Button
 } from '@mui/material';
 import {
-  Favorite, FavoriteBorder, Share,
-  Comment, Visibility
+  Favorite, FavoriteBorder, Share, Comment, Visibility
 } from '@mui/icons-material';
 import useNavigation from '../../hooks/useNavigation';
 import { useAuth } from '../../context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import PostDetailModal from '../PostDetail';
+import axiosClient from '../../api/axiosClient';
+import { toast } from 'react-toastify';
 
-function PostList() {
+function PostList({ userId }) {
   const [posts, setPosts] = useState([]);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
+  const [showCommentForm, setShowCommentForm] = useState({});
+  const [commentText, setCommentText] = useState({});
+  const commentFormRef = useRef({});
 
   const { goToLogin, goToProfile } = useNavigation();
   const { user } = useAuth();
 
   const fetchPosts = async () => {
     try {
-      const res = await fetch('http://localhost:8017/v1/posts');
-      if (!res.ok) throw new Error('Lỗi lấy bài viết');
-      const data = await res.json();
+      const res = await axiosClient.get('/posts');
+      if (!res.data) throw new Error('Lỗi lấy bài viết');
+
+      let data = res.data;
+
+      // ✅ Lọc bài viết theo userId nếu có truyền vào
+      if (userId) {
+        data = data.filter((post) => post.author?._id === userId);
+      }
 
       const sorted = [...data].sort(
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
@@ -67,6 +77,7 @@ function PostList() {
       setPosts(enhanced);
     } catch (error) {
       console.error('Lỗi khi tải bài viết:', error);
+      toast.error(error.response?.data?.message || 'Lỗi khi tải bài viết');
     }
   };
 
@@ -75,7 +86,7 @@ function PostList() {
     const handleNewPost = () => fetchPosts();
     window.addEventListener('postCreated', handleNewPost);
     return () => window.removeEventListener('postCreated', handleNewPost);
-  }, [user]);
+  }, [user, userId]);
 
   const handleCardClick = (post) => {
     if (!user) {
@@ -84,7 +95,6 @@ function PostList() {
       return;
     }
 
-    // ✅ Thêm currentUserId vào post để truyền vào Modal
     setSelectedPost({
       ...post,
       currentUserId: user._id
@@ -107,33 +117,101 @@ function PostList() {
     }
 
     try {
-      const res = await fetch(`http://localhost:8017/v1/posts/${post.id}/like`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${user.token}`
-        }
-      });
+      const res = await axiosClient.post(`/posts/${post.id}/like`);
+      const updated = await axiosClient.get(`/posts/${post.id}`);
 
-      if (!res.ok) throw new Error('Lỗi khi like bài viết');
+      const updatedPost = {
+        ...posts.find((p) => p.id === post.id),
+        ...updated.data,
+        comments: updated.data.comments?.length || 0,
+        likesCount: updated.data.likes?.length || 0,
+        isLiked: updated.data.likes?.includes(user._id),
+        rating: updated.data.rating || 4,
+        image: posts.find((p) => p.id === post.id)?.image
+      };
 
-      const updatedPosts = posts.map((p) =>
-        p.id === post.id
-          ? {
-              ...p,
-              isLiked: !p.isLiked,
-              likesCount: p.isLiked ? p.likesCount - 1 : p.likesCount + 1
-            }
-          : p
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === post.id ? updatedPost : p
+        )
       );
 
-      setPosts(updatedPosts);
+      if (selectedPost?.id === post.id) {
+        setSelectedPost(updatedPost);
+      }
+
+      toast.success(res.data.liked ? 'Đã thích bài viết!' : 'Đã bỏ thích bài viết!');
     } catch (err) {
       console.error('❌ Like error:', err);
+      toast.error(err.response?.data?.message || 'Lỗi khi thích bài viết');
     }
   };
 
-  // ✅ Nhận post mới từ Modal sau khi comment và cập nhật lại danh sách
+  const handleCommentClick = (postId) => {
+    if (!user) {
+      setSnackbarOpen(true);
+      setTimeout(() => goToLogin(), 1000);
+      return;
+    }
+
+    setShowCommentForm((prev) => ({
+      ...prev,
+      [postId]: true
+    }));
+
+    setTimeout(() => {
+      if (commentFormRef.current[postId]) {
+        commentFormRef.current[postId].scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
+
+  const handleCommentSubmit = async (postId) => {
+    if (!commentText[postId]?.trim()) {
+      toast.error('Nội dung bình luận không được để trống');
+      return;
+    }
+
+    try {
+      await axiosClient.post(`/posts/${postId}/comment`, {
+        content: commentText[postId].trim(),
+      });
+
+      const updated = await axiosClient.get(`/posts/${postId}`);
+      const updatedPost = {
+        ...posts.find((p) => p.id === postId),
+        ...updated.data,
+        comments: updated.data.comments?.length || 0,
+        likesCount: updated.data.likes?.length || 0,
+        isLiked: updated.data.likes?.includes(user._id)
+      };
+
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId ? updatedPost : p
+        )
+      );
+
+      setCommentText((prev) => ({
+        ...prev,
+        [postId]: ''
+      }));
+      setShowCommentForm((prev) => ({
+        ...prev,
+        [postId]: false
+      }));
+
+      if (selectedPost?.id === postId) {
+        setSelectedPost(updatedPost);
+      }
+
+      toast.success('Bình luận đã được gửi!');
+    } catch (err) {
+      console.error('❌ Lỗi khi gửi bình luận:', err);
+      toast.error(err.response?.data?.message || 'Lỗi khi gửi bình luận');
+    }
+  };
+
   const handleUpdatePost = (updatedPost) => {
     setPosts((prev) =>
       prev.map((p) =>
@@ -149,7 +227,6 @@ function PostList() {
       )
     );
 
-    // ✅ Cập nhật lại modal nếu đang mở
     setSelectedPost((prev) =>
       prev?._id === updatedPost._id
         ? {
@@ -163,6 +240,7 @@ function PostList() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, px: 3, pt: 3 }}>
       {posts.map((post) => (
+        // Card hiển thị từng bài viết
         <Card
           key={post.id}
           onClick={() => handleCardClick(post)}
@@ -221,17 +299,6 @@ function PostList() {
                 <Stack direction="row" spacing={1.5} alignItems="center">
                   <Rating value={post.rating} readOnly precision={0.5} sx={{ fontSize: '1.1rem', color: '#FFD700' }} />
                   <IconButton size="small" sx={{ '&:hover': { color: '#BC3AAA' } }}>
-                    <Comment sx={{ fontSize: 20, color: '#FE5E7E' }} />
-                  </IconButton>
-                  <IconButton size="small" onClick={(e) => handleLike(e, post)} sx={{ '&:hover': { color: '#BC3AAA' } }}>
-                    {post.isLiked ? (
-                      <Favorite sx={{ fontSize: 20, color: '#BC3AAA' }} />
-                    ) : (
-                      <FavoriteBorder sx={{ fontSize: 20, color: '#FE5E7E' }} />
-                    )}
-                  </IconButton>
-                  <Typography variant="caption">{post.likesCount}</Typography>
-                  <IconButton size="small" sx={{ '&:hover': { color: '#BC3AAA' } }}>
                     <Share sx={{ fontSize: 20, color: '#FE5E7E' }} />
                   </IconButton>
                 </Stack>
@@ -239,9 +306,23 @@ function PostList() {
 
               <Divider sx={{ my: 2 }} />
 
-              <Box sx={{ display: 'flex', gap: 4, color: '#666' }}>
+              <Box sx={{ display: 'flex', gap: 4, color: '#666', alignItems: 'center' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Comment sx={{ fontSize: 18 }} />
+                  <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleLike(e, post); }} sx={{ '&:hover': { color: '#BC3AAA' } }}>
+                    {post.isLiked ? (
+                      <Favorite sx={{ fontSize: 20, color: '#BC3AAA' }} />
+                    ) : (
+                      <FavoriteBorder sx={{ fontSize: 20, color: '#FE5E7E' }} />
+                    )}
+                  </IconButton>
+                  <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                    {post.likesCount} lượt thích
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleCommentClick(post.id); }} sx={{ '&:hover': { color: '#BC3AAA' } }}>
+                    <Comment sx={{ fontSize: 18, color: '#FE5E7E' }} />
+                  </IconButton>
                   <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
                     {post.comments} bình luận
                   </Typography>
@@ -253,6 +334,53 @@ function PostList() {
                   </Typography>
                 </Box>
               </Box>
+
+              {showCommentForm[post.id] && (
+                <Box
+                  ref={(el) => (commentFormRef.current[post.id] = el)}
+                  sx={{
+                    mt: 2,
+                    bgcolor: '#fff',
+                    borderRadius: '8px',
+                    p: 2,
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                  }}
+                >
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    value={commentText[post.id] || ''}
+                    onChange={(e) => setCommentText((prev) => ({
+                      ...prev,
+                      [post.id]: e.target.value
+                    }))}
+                    placeholder="Viết bình luận của bạn..."
+                    sx={{
+                      mb: 2,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '8px',
+                        '& fieldset': { borderColor: '#BC3AAA' },
+                        '&:hover fieldset': { borderColor: '#BC3AAA' },
+                      },
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={() => handleCommentSubmit(post.id)}
+                    disabled={!commentText[post.id]?.trim()}
+                    sx={{
+                      bgcolor: '#BC3AAA',
+                      color: '#fff',
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      '&:hover': { bgcolor: '#a2308f' },
+                    }}
+                  >
+                    Gửi bình luận
+                  </Button>
+                </Box>
+              )}
             </CardContent>
           </Box>
         </Card>
@@ -263,7 +391,7 @@ function PostList() {
           open={Boolean(selectedPost)}
           onClose={handleCloseModal}
           post={selectedPost}
-          onUpdatePost={handleUpdatePost} // ✅ Truyền callback cập nhật lại bài viết
+          onUpdatePost={handleUpdatePost}
         />
       )}
     </Box>

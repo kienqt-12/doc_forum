@@ -31,6 +31,7 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
   const [likes, setLikes] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [comments, setComments] = useState([]);
+  const [animateLike, setAnimateLike] = useState({});
   const commentFormRef = useRef(null);
 
   useEffect(() => {
@@ -39,7 +40,7 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
         try {
           const { data } = await axiosClient.get(`/posts/${post._id}`);
           setLikes(data.likes?.length || 0);
-          setIsLiked(data.likes?.includes(localStorage.getItem('userId')) || false);
+          setIsLiked(post.isLiked || false); // Cập nhật trạng thái like từ props
           setComments(Array.isArray(data.comments) ? data.comments : []);
         } catch (error) {
           console.error('❌ Lỗi khi tải chi tiết bài viết:', error);
@@ -48,10 +49,8 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
       }
     };
 
-    if (open && post?._id) {
-      fetchPostDetail();
-    }
-  }, [open, post]);
+    fetchPostDetail();
+  }, [post?._id]);
 
   const handleCommentClick = () => {
     setShowCommentForm(true);
@@ -68,8 +67,9 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
       const updatedPost = {
         ...post,
         ...updated.data,
+        comments: updated.data.comments || post.comments || [],
         isLiked: res.data.liked,
-        likesCount: res.data.totalLikes,
+        likesCount: updated.data.likes?.length || res.data.totalLikes,
       };
 
       setIsLiked(res.data.liked);
@@ -287,7 +287,7 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
               icon={<FavoriteBorder sx={{ fontSize: 24, color: '#FE5E7E' }} />}
               checkedIcon={<Favorite sx={{ fontSize: 24, color: '#BC3AAA' }} />}
               checked={isLiked}
-              onClick={(e) => {
+              onChange={(e) => {
                 e.stopPropagation();
                 handleLikeToggle();
               }}
