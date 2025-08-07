@@ -25,9 +25,10 @@ import {
   Comment as CommentIcon,
   Share as ShareIcon,
   Visibility,
-  Person,PersonOutline,Business,
+  Person,
   LocalHospital,
   LocationOn,
+  Reply as ReplyIcon,
 } from '@mui/icons-material';
 
 const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
@@ -36,26 +37,41 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
   const [likes, setLikes] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [comments, setComments] = useState([]);
-  const [animateLike, setAnimateLike] = useState({});
+  const [replyText, setReplyText] = useState({});
+  const [showReplyForm, setShowReplyForm] = useState({});
   const commentFormRef = useRef(null);
+
+  // Kiểm tra nếu post không tồn tại
+  if (!post) {
+    return (
+      <Dialog open={open} onClose={onClose}>
+        <DialogContent>
+          <Typography color="error">Không có dữ liệu bài viết!</Typography>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   useEffect(() => {
     const fetchPostDetail = async () => {
-      if (post && post._id) {
-        try {
-          const { data } = await axiosClient.get(`/posts/${post._id}`);
-          setLikes(data.likes?.length || 0);
-          setIsLiked(post.isLiked || false);
-          setComments(Array.isArray(data.comments) ? data.comments : []);
-        } catch (error) {
-          console.error('❌ Lỗi khi tải chi tiết bài viết:', error);
-          toast.error(error.response?.data?.message || 'Lỗi khi tải chi tiết bài viết');
-        }
+      if (!post._id) {
+        toast.error('ID bài viết không hợp lệ');
+        return;
+      }
+
+      try {
+        const { data } = await axiosClient.get(`/posts/${post._id}`);
+        setLikes(data.likes?.length || 0);
+        setIsLiked(data.isLiked || false);
+        setComments(Array.isArray(data.comments) ? data.comments.filter(c => c && c._id) : []);
+      } catch (error) {
+        console.error('❌ Lỗi khi tải chi tiết bài viết:', error);
+        toast.error(error.response?.data?.message || 'Lỗi khi tải chi tiết bài viết');
       }
     };
 
     fetchPostDetail();
-  }, [post?._id]);
+  }, [post._id]);
 
   const handleCommentClick = () => {
     setShowCommentForm(true);
@@ -65,6 +81,11 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
   };
 
   const handleLikeToggle = async () => {
+    if (!post._id) {
+      toast.error('ID bài viết không hợp lệ');
+      return;
+    }
+
     try {
       const res = await axiosClient.post(`/posts/${post._id}/like`);
       const updated = await axiosClient.get(`/posts/${post._id}`);
@@ -72,7 +93,7 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
       const updatedPost = {
         ...post,
         ...updated.data,
-        comments: updated.data.comments || post.comments || [],
+        comments: Array.isArray(updated.data.comments) ? updated.data.comments.filter(c => c && c._id) : [],
         isLiked: res.data.liked,
         likesCount: updated.data.likes?.length || res.data.totalLikes,
       };
@@ -88,6 +109,11 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
   };
 
   const handleCommentSubmit = async () => {
+    if (!post._id) {
+      toast.error('ID bài viết không hợp lệ');
+      return;
+    }
+
     if (!commentText.trim()) {
       toast.error('Nội dung bình luận không được để trống');
       return;
@@ -99,16 +125,13 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
       });
 
       const updated = await axiosClient.get(`/posts/${post._id}`);
-      const safeComments = Array.isArray(updated.data.comments) ? updated.data.comments : [];
+      const safeComments = Array.isArray(updated.data.comments) ? updated.data.comments.filter(c => c && c._id) : [];
 
       setComments(safeComments);
       setCommentText('');
 
       if (onUpdatePost) {
-        const updatedPost = {
-          ...post,
-          ...updated.data,
-        };
+        const updatedPost = { ...post, ...updated.data };
         onUpdatePost(updatedPost);
       }
 
@@ -116,6 +139,54 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
     } catch (err) {
       console.error('❌ Lỗi khi gửi bình luận:', err);
       toast.error(err.response?.data?.message || 'Lỗi khi gửi bình luận');
+    }
+  };
+
+  const handleReplyClick = (commentId) => {
+    setShowReplyForm((prev) => ({
+      ...prev,
+      [commentId]: !prev[commentId],
+    }));
+  };
+
+  const handleReplySubmit = async (commentId) => {
+    if (!post._id) {
+      toast.error('ID bài viết không hợp lệ');
+      return;
+    }
+
+    if (!commentId) {
+      toast.error('ID bình luận không hợp lệ');
+      return;
+    }
+
+    if (!replyText[commentId]?.trim()) {
+      toast.error('Nội dung trả lời không được để trống');
+      return;
+    }
+
+    try {
+      await axiosClient.post(`/posts/${post.id}/comments/${commentId}/reply`, {
+        content: replyText[commentId].trim(),
+      });
+
+
+      const updated = await axiosClient.get(`/posts/${post._id}`);
+      const safeComments = Array.isArray(updated.data.comments) ? updated.data.comments.filter(c => c && c._id) : [];
+
+      setComments(safeComments);
+      setReplyText((prev) => ({ ...prev, [commentId]: '' }));
+      setShowReplyForm((prev) => ({ ...prev, [commentId]: false }));
+
+      if (onUpdatePost) {
+        const updatedPost = { ...post, ...updated.data };
+        onUpdatePost(updatedPost);
+      }
+
+      toast.success('Trả lời đã được gửi!');
+    } catch (err) {
+      console.error('❌ Lỗi khi gửi trả lời:', err);
+      toast.error(err.response?.data?.message || 'Lỗi khi gửi trả lời');
     }
   };
 
@@ -158,8 +229,8 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
         {/* Tác giả */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
           <Avatar
-            src={post?.author?.avatar || 'https://via.placeholder.com/48'}
-            alt={post?.author?.name || 'Author'}
+            src={post.author?.avatar || 'https://via.placeholder.com/48'}
+            alt={post.author?.name || 'Author'}
             sx={{
               width: 48,
               height: 48,
@@ -181,7 +252,7 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
                 lineHeight: 1.5,
               }}
             >
-              {post?.author?.name || 'Người dùng'}
+              {post.author?.name || 'Người dùng'}
             </Typography>
             <Typography
               variant="caption"
@@ -192,7 +263,7 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
                 lineHeight: 1.8,
               }}
             >
-              {post?.hoursAgo || 'Vừa đăng'}
+              {post.hoursAgo || 'Vừa đăng'}
             </Typography>
           </Box>
         </Box>
@@ -208,7 +279,7 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
             mb: 2,
           }}
         >
-          {post?.title || 'Chi tiết bài viết'}
+          {post.title || 'Chi tiết bài viết'}
         </Typography>
         <Typography
           variant="body1"
@@ -219,7 +290,7 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
             mb: 3,
           }}
         >
-          {post?.content || 'Nội dung bài viết sẽ hiển thị tại đây.'}
+          {post.content || 'Nội dung bài viết sẽ hiển thị tại đây.'}
         </Typography>
 
         {/* Thông tin chuyên môn */}
@@ -255,7 +326,7 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
           </Typography>
 
           <Grid container spacing={2}>
-            {post?.doctor && (
+            {post.doctor && (
               <Grid item xs={12} sm={4}>
                 <Stack direction="row" spacing={1.5} alignItems="center">
                   <Person sx={{ color: '#BC3AAA', fontSize: 18 }} />
@@ -265,7 +336,7 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
                 </Stack>
               </Grid>
             )}
-            {post?.workplace && (
+            {post.workplace && (
               <Grid item xs={12} sm={4}>
                 <Stack direction="row" spacing={1.5} alignItems="center">
                   <LocalHospital sx={{ color: '#BC3AAA', fontSize: 18 }} />
@@ -275,7 +346,7 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
                 </Stack>
               </Grid>
             )}
-            {post?.city && (
+            {post.city && (
               <Grid item xs={12} sm={4}>
                 <Stack direction="row" spacing={1.5} alignItems="center">
                   <LocationOn sx={{ color: '#BC3AAA', fontSize: 18 }} />
@@ -287,7 +358,7 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
             )}
           </Grid>
 
-          {Array.isArray(post?.tags) && post.tags.length > 0 && (
+          {Array.isArray(post.tags) && post.tags.length > 0 && (
             <Box sx={{ mt: 2.5 }}>
               <Typography
                 variant="body2"
@@ -327,7 +398,7 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
         </Box>
 
         {/* Hình ảnh */}
-        {post?.imageUrl && (
+        {post.imageUrl && (
           <Box
             sx={{
               width: { xs: '100%', sm: '100%' },
@@ -357,26 +428,26 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Stack direction="row" spacing={2} alignItems="center">
             <Rating
-              value={post?.rating || 4}
+              value={post.rating || 4}
               readOnly
               precision={0.5}
               sx={{ fontSize: '1.2rem', color: '#FFD700', opacity: 0.9 }}
             />
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <CommentIcon sx={{ fontSize: 20, color: '#FE5E7E' }} />
-              <Typography variant="body2" sx={{ fontSize: '0.85rem', color: '#555' }}>
+              <Typography variant="body2" sx={{ color: '#555', fontSize: '0.85rem' }}>
                 {comments.length} bình luận
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Visibility sx={{ fontSize: 20, color: '#FE5E7E' }} />
-              <Typography variant="body2" sx={{ fontSize: '0.85rem', color: '#555' }}>
-                {post?.views || 0} lượt xem
+              <Typography variant="body2" sx={{ color: '#555', fontSize: '0.85rem' }}>
+                {post.views || 0} lượt xem
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Favorite sx={{ fontSize: 20, color: isLiked ? '#BC3AAA' : '#FE5E7E' }} />
-              <Typography variant="body2" sx={{ fontSize: '0.85rem', color: '#555' }}>
+              <Typography variant="body2" sx={{ color: '#555', fontSize: '0.85rem' }}>
                 {likes} lượt thích
               </Typography>
             </Box>
@@ -473,7 +544,7 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
           >
             Bình luận ({comments.length})
           </Typography>
-          {comments.length > 0 ? (
+          {Array.isArray(comments) && comments.length > 0 ? (
             <Stack spacing={2}>
               {comments.map((comment) => (
                 <Box
@@ -528,12 +599,155 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
                           fontSize: '0.85rem',
                           color: '#333',
                           lineHeight: 1.5,
+                          mb: 1,
                         }}
                       >
                         {comment.content}
                       </Typography>
+                      <Button
+                        size="small"
+                        startIcon={<ReplyIcon />}
+                        onClick={() => handleReplyClick(comment._id)}
+                        sx={{
+                          color: '#BC3AAA',
+                          textTransform: 'none',
+                          fontSize: '0.8rem',
+                        }}
+                      >
+                        Trả lời
+                      </Button>
                     </Box>
                   </Box>
+
+                  {/* Form trả lời */}
+                  {showReplyForm[comment._id] && (
+                    <Box
+                      sx={{
+                        mt: 2,
+                        ml: 5,
+                        bgcolor: '#f9f9f9',
+                        borderRadius: '8px',
+                        p: 2,
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                      }}
+                    >
+                      <TextField
+                        fullWidth
+                        multiline
+                        rows={2}
+                        value={replyText[comment._id] || ''}
+                        onChange={(e) =>
+                          setReplyText((prev) => ({ ...prev, [comment._id]: e.target.value }))
+                        }
+                        placeholder="Viết câu trả lời của bạn..."
+                        sx={{
+                          mb: 2,
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: '8px',
+                            '& fieldset': { borderColor: '#BC3AAA' },
+                            '&:hover fieldset': { borderColor: '#BC3AAA' },
+                          },
+                        }}
+                      />
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          variant="contained"
+                          onClick={() => handleReplySubmit(comment._id)}
+                          disabled={!replyText[comment._id]?.trim()}
+                          sx={{
+                            bgcolor: '#BC3AAA',
+                            color: '#fff',
+                            borderRadius: '8px',
+                            textTransform: 'none',
+                            '&:hover': { bgcolor: '#a2308f' },
+                          }}
+                        >
+                          Gửi trả lời
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          onClick={() => handleReplyClick(comment._id)}
+                          sx={{
+                            borderColor: '#BC3AAA',
+                            color: '#BC3AAA',
+                            borderRadius: '8px',
+                            textTransform: 'none',
+                            '&:hover': { borderColor: '#a2308f', color: '#a2308f' },
+                          }}
+                        >
+                          Hủy
+                        </Button>
+                      </Box>
+                    </Box>
+                  )}
+
+                  {/* Hiển thị các câu trả lời (replies) */}
+                  {Array.isArray(comment.replies) && comment.replies.length > 0 && (
+                    <Box sx={{ ml: 5, mt: 2 }}>
+                      <Stack spacing={1}>
+                        {comment.replies
+                          .filter((reply) => reply && reply._id)
+                          .map((reply) => (
+                            <Box
+                              key={reply._id}
+                              sx={{
+                                bgcolor: '#f9f9f9',
+                                borderRadius: '8px',
+                                p: 1.5,
+                                boxShadow: '0 1px 6px rgba(0, 0, 0, 0.05)',
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                                <Avatar
+                                  src={reply.user?.avatar}
+                                  alt={reply.user?.name || 'Ẩn danh'}
+                                  sx={{
+                                    width: 28,
+                                    height: 28,
+                                    border: '1px solid #BC3AAA',
+                                  }}
+                                />
+                                <Box sx={{ flex: 1 }}>
+                                  <Box
+                                    sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                  >
+                                    <Typography
+                                      variant="subtitle2"
+                                      sx={{
+                                        fontSize: '0.8rem',
+                                        fontWeight: 600,
+                                        color: '#1a1a1a',
+                                      }}
+                                    >
+                                      {reply.user?.name || 'Ẩn danh'}
+                                    </Typography>
+                                    <Typography
+                                      variant="caption"
+                                      sx={{
+                                        color: '#666',
+                                        fontSize: '0.7rem',
+                                      }}
+                                    >
+                                      {new Date(reply.createdAt).toLocaleString()}
+                                    </Typography>
+                                  </Box>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      fontSize: '0.8rem',
+                                      color: '#333',
+                                      lineHeight: 1.5,
+                                    }}
+                                  >
+                                    {reply.content}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            </Box>
+                          ))}
+                      </Stack>
+                    </Box>
+                  )}
                 </Box>
               ))}
             </Stack>

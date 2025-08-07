@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Card, CardContent, Typography, Avatar,
-  IconButton, Rating, Divider, Stack, TextField, Button, Menu, MenuItem
+  IconButton, Rating, Divider, Stack, TextField, Button, Menu, MenuItem,Grid  
 } from '@mui/material';
 import {
   Favorite, FavoriteBorder, Share, Comment, Visibility, MoreVert,
@@ -68,7 +68,11 @@ function PostList({ userId }) {
           image,
           imageUrl: post.imageUrl || '',
           likesCount: likesArray.length,
-          isLiked
+          isLiked,
+          doctor: post.doctor || '',
+          workplace: post.workplace || '',
+          city: post.city || '',
+          tags: post.tags || [],
         };
       });
 
@@ -286,9 +290,29 @@ function PostList({ userId }) {
                       {post.hoursAgo}
                     </Typography>
                 </Box>
-
-                  <Stack direction="row" spacing={1.5} alignItems="center">
-                    <Rating value={post.rating} readOnly precision={0.5} sx={{ fontSize: '1.1rem', color: '#FFD700' }} />
+                <Stack direction="row" spacing={2} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+                      {post?.doctor && (
+                        <Box sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          bgcolor: '#F3E5F5',
+                          borderRadius: '12px',
+                          p: 1,
+                          transition: 'all 0.3s ease',
+                          '&:hover': { bgcolor: '#E1BEE7' }
+                        }}>
+                          <LocalHospital sx={{ color: '#BC3AAA', fontSize: 20, mr: 0.5 }} />
+                          <Typography variant="body2" sx={{ color: '#8E24AA', fontWeight: 500, fontSize: '0.9rem', mr: 1 }}>
+                            {post.doctor}
+                          </Typography>
+                          <Rating
+                            value={post.rating}
+                            readOnly
+                            precision={0.5}
+                            sx={{ fontSize: '1rem', color: '#FFD700' }}
+                          />
+                        </Box>
+                      )}
                 {isOwnPost && (
                   <Box sx={{ marginLeft: 'auto' }}>
                     <IconButton onClick={(e) => {
@@ -340,53 +364,23 @@ function PostList({ userId }) {
                     </Typography>
                   </Box>
                 </Box>
-
-              {showCommentForm[post.id] && (
-                  <Box
-                    ref={(el) => (commentFormRef.current[post.id] = el)}
+              {post.tags.length > 0 && (
+              <Box sx={{ mt: 1.5, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {post.tags.map((tag, idx) => (
+                  <Chip
+                    key={idx}
+                    label={`#${tag}`}
+                    size="small"
                     sx={{
-                      mt: 2,
-                      bgcolor: '#fff',
-                      borderRadius: '8px',
-                      p: 2,
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                      bgcolor: '#F3E5F5',
+                      color: '#8E24AA',
+                      fontWeight: 500,
+                      fontSize: '0.75rem',
                     }}
-                  >
-                  <TextField
-                    fullWidth
-                    multiline
-                      rows={3}
-                      value={commentText[post.id] || ''}
-                      onChange={(e) => setCommentText((prev) => ({
-                        ...prev,
-                        [post.id]: e.target.value
-                      }))}
-                      placeholder="Viết bình luận của bạn..."
-                      sx={{
-                        mb: 2,
-                        '& .MuiOutlinedInput-root': {
-                          borderRadius: '8px',
-                          '& fieldset': { borderColor: '#BC3AAA' },
-                          '&:hover fieldset': { borderColor: '#BC3AAA' },
-                        },
-                      }}
                   />
-                  <Button
-                    variant="contained"
-                    onClick={() => handleCommentSubmit(post.id)}
-                      disabled={!commentText[post.id]?.trim()}
-                      sx={{
-                        bgcolor: '#BC3AAA',
-                        color: '#fff',
-                        borderRadius: '8px',
-                        textTransform: 'none',
-                        '&:hover': { bgcolor: '#a2308f' },
-                      }}
-                  >
-                      Gửi bình luận
-                  </Button>
-                </Box>
-              )}
+                ))}
+              </Box>
+            )}
             </CardContent>
             </Box>
           </Card>
