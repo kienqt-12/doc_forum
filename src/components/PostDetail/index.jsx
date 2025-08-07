@@ -15,6 +15,8 @@ import {
   Checkbox,
   TextField,
   Button,
+  Chip,
+  Grid,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -23,6 +25,9 @@ import {
   Comment as CommentIcon,
   Share as ShareIcon,
   Visibility,
+  Person,PersonOutline,Business,
+  LocalHospital,
+  LocationOn,
 } from '@mui/icons-material';
 
 const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
@@ -40,7 +45,7 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
         try {
           const { data } = await axiosClient.get(`/posts/${post._id}`);
           setLikes(data.likes?.length || 0);
-          setIsLiked(post.isLiked || false); // Cập nhật trạng thái like từ props
+          setIsLiked(post.isLiked || false);
           setComments(Array.isArray(data.comments) ? data.comments : []);
         } catch (error) {
           console.error('❌ Lỗi khi tải chi tiết bài viết:', error);
@@ -216,6 +221,110 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
         >
           {post?.content || 'Nội dung bài viết sẽ hiển thị tại đây.'}
         </Typography>
+
+        {/* Thông tin chuyên môn */}
+        <Box
+          sx={{
+            mt: 3,
+            p: { xs: 2, sm: 3 },
+            mb: 3,
+            borderRadius: 2,
+            bgcolor: '#f8f0f9',
+            border: '1px solid #e8d1e9',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              boxShadow: '0 4px 12px rgba(188, 58, 170, 0.15)',
+            },
+          }}
+        >
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 600,
+              fontSize: '1.1rem',
+              color: '#BC3AAA',
+              mb: 2,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+            }}
+          >
+            <LocalHospital sx={{ fontSize: 20, color: '#BC3AAA' }} />
+            Thông tin chuyên môn
+          </Typography>
+
+          <Grid container spacing={2}>
+            {post?.doctor && (
+              <Grid item xs={12} sm={4}>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <Person sx={{ color: '#BC3AAA', fontSize: 18 }} />
+                  <Typography variant="body2" sx={{ color: '#333', fontSize: '0.9rem' }}>
+                    <strong>Bác sĩ:</strong> {post.doctor}
+                  </Typography>
+                </Stack>
+              </Grid>
+            )}
+            {post?.workplace && (
+              <Grid item xs={12} sm={4}>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <LocalHospital sx={{ color: '#BC3AAA', fontSize: 18 }} />
+                  <Typography variant="body2" sx={{ color: '#333', fontSize: '0.9rem' }}>
+                    <strong>Nơi làm việc:</strong> {post.workplace}
+                  </Typography>
+                </Stack>
+              </Grid>
+            )}
+            {post?.city && (
+              <Grid item xs={12} sm={4}>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <LocationOn sx={{ color: '#BC3AAA', fontSize: 18 }} />
+                  <Typography variant="body2" sx={{ color: '#333', fontSize: '0.9rem' }}>
+                    <strong>Thành phố:</strong> {post.city}
+                  </Typography>
+                </Stack>
+              </Grid>
+            )}
+          </Grid>
+
+          {Array.isArray(post?.tags) && post.tags.length > 0 && (
+            <Box sx={{ mt: 2.5 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 600,
+                  color: '#333',
+                  fontSize: '0.9rem',
+                  mb: 1.5,
+                }}
+              >
+                Chuyên khoa:
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {post.tags.map((tag, idx) => (
+                  <Chip
+                    key={idx}
+                    label={`#${tag}`}
+                    size="small"
+                    sx={{
+                      bgcolor: '#e8d1e9',
+                      color: '#BC3AAA',
+                      fontWeight: 500,
+                      fontSize: '0.8rem',
+                      borderRadius: '12px',
+                      px: 1,
+                      transition: 'all 0.2s ease',
+                      '&:hover': {
+                        bgcolor: '#BC3AAA',
+                        color: '#fff',
+                      },
+                    }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
+        </Box>
 
         {/* Hình ảnh */}
         {post?.imageUrl && (

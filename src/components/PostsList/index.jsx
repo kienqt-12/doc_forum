@@ -1,17 +1,20 @@
-// ⬇️ Không đổi phần import
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Card, CardContent, Typography, Avatar,
   IconButton, Rating, Divider, Stack, TextField, Button, Menu, MenuItem
 } from '@mui/material';
 import {
-  Favorite, FavoriteBorder, Share, Comment, Visibility, MoreVert
+  Favorite, FavoriteBorder, Share, Comment, Visibility, MoreVert,
+  Person,PersonOutline,Business,
+  LocalHospital,
+  LocationOn,
 } from '@mui/icons-material';
 import useNavigation from '../../hooks/useNavigation';
 import { useAuth } from '../../context/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import PostDetailModal from '../PostDetail';
+import EditPostModal from '../EditPost';
 import axiosClient from '../../api/axiosClient';
 import { toast } from 'react-toastify';
 
@@ -22,11 +25,12 @@ function PostList({ userId }) {
   const [showCommentForm, setShowCommentForm] = useState({});
   const [commentText, setCommentText] = useState({});
   const commentFormRef = useRef({});
-
   const { goToLogin, goToProfile } = useNavigation();
   const { user } = useAuth();
-
   const [anchorEls, setAnchorEls] = useState({});
+
+  const [editingPost, setEditingPost] = useState(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   const fetchPosts = async () => {
     try {
@@ -34,25 +38,17 @@ function PostList({ userId }) {
       if (!res.data) throw new Error('Lỗi lấy bài viết');
 
       let data = res.data;
-
       if (userId) {
         data = data.filter((post) => post.author?._id === userId);
       }
 
-      const sorted = [...data].sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-      );
+      const sorted = [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
       const enhanced = sorted.map((post) => {
         const avatarFallback = 'https://via.placeholder.com/48';
         let image = post?.author?.avatar || avatarFallback;
 
-        if (
-          post?.author?.email &&
-          user?.email &&
-          post.author.email === user.email &&
-          user?.avatar
-        ) {
+        if (post?.author?.email && user?.email && post.author.email === user.email && user?.avatar) {
           image = user.avatar;
         }
 
@@ -78,7 +74,6 @@ function PostList({ userId }) {
 
       setPosts(enhanced);
     } catch (error) {
-      console.error('Lỗi khi tải bài viết:', error);
       toast.error(error.response?.data?.message || 'Lỗi khi tải bài viết');
     }
   };
@@ -96,11 +91,7 @@ function PostList({ userId }) {
       setTimeout(() => goToLogin(), 1000);
       return;
     }
-
-    setSelectedPost({
-      ...post,
-      currentUserId: user._id
-    });
+    setSelectedPost({ ...post, currentUserId: user._id });
   };
 
   const handleCloseModal = () => setSelectedPost(null);
@@ -132,11 +123,7 @@ function PostList({ userId }) {
         image: posts.find((p) => p.id === post.id)?.image
       };
 
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === post.id ? updatedPost : p
-        )
-      );
+      setPosts((prev) => prev.map((p) => (p.id === post.id ? updatedPost : p)));
 
       if (selectedPost?.id === post.id) {
         setSelectedPost(updatedPost);
@@ -144,7 +131,6 @@ function PostList({ userId }) {
 
       toast.success(res.data.liked ? 'Đã thích bài viết!' : 'Đã bỏ thích bài viết!');
     } catch (err) {
-      console.error('❌ Like error:', err);
       toast.error(err.response?.data?.message || 'Lỗi khi thích bài viết');
     }
   };
@@ -156,10 +142,7 @@ function PostList({ userId }) {
       return;
     }
 
-    setShowCommentForm((prev) => ({
-      ...prev,
-      [postId]: true
-    }));
+    setShowCommentForm((prev) => ({ ...prev, [postId]: true }));
 
     setTimeout(() => {
       if (commentFormRef.current[postId]) {
@@ -188,20 +171,10 @@ function PostList({ userId }) {
         isLiked: updated.data.likes?.includes(user._id)
       };
 
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId ? updatedPost : p
-        )
-      );
+      setPosts((prev) => prev.map((p) => (p.id === postId ? updatedPost : p)));
 
-      setCommentText((prev) => ({
-        ...prev,
-        [postId]: ''
-      }));
-      setShowCommentForm((prev) => ({
-        ...prev,
-        [postId]: false
-      }));
+      setCommentText((prev) => ({ ...prev, [postId]: '' }));
+      setShowCommentForm((prev) => ({ ...prev, [postId]: false }));
 
       if (selectedPost?.id === postId) {
         setSelectedPost(updatedPost);
@@ -209,7 +182,6 @@ function PostList({ userId }) {
 
       toast.success('Bình luận đã được gửi!');
     } catch (err) {
-      console.error('❌ Lỗi khi gửi bình luận:', err);
       toast.error(err.response?.data?.message || 'Lỗi khi gửi bình luận');
     }
   };
@@ -231,10 +203,7 @@ function PostList({ userId }) {
 
     setSelectedPost((prev) =>
       prev?._id === updatedPost._id
-        ? {
-            ...updatedPost,
-            currentUserId: user._id
-          }
+        ? { ...updatedPost, currentUserId: user._id }
         : prev
     );
   };
@@ -246,9 +215,14 @@ function PostList({ userId }) {
       setPosts((prev) => prev.filter((p) => p.id !== postId));
       toast.success('Đã xoá bài viết');
     } catch (error) {
-      console.error('❌ Xoá bài viết lỗi:', error);
       toast.error('Không thể xoá bài viết');
     }
+  };
+
+  const handleEditPost = (e, post) => {
+    e.stopPropagation();
+    setEditingPost(post);
+    setEditModalOpen(true);
   };
 
   return (
@@ -304,42 +278,36 @@ function PostList({ userId }) {
 
               <CardContent sx={{ flex: 1, p: 2, pt: 3 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
-                  <Box>
+                <Box>
                     <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
                       {post.title}
                     </Typography>
                     <Typography variant="caption" sx={{ color: '#666' }}>
                       {post.hoursAgo}
                     </Typography>
-                  </Box>
+                </Box>
 
                   <Stack direction="row" spacing={1.5} alignItems="center">
                     <Rating value={post.rating} readOnly precision={0.5} sx={{ fontSize: '1.1rem', color: '#FFD700' }} />
-                    {isOwnPost && (
-                      <>
-                        <IconButton
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setAnchorEls((prev) => ({ ...prev, [post.id]: e.currentTarget }));
-                          }}
-                        >
-                          <MoreVert />
-                        </IconButton>
-                        <Menu
-                          anchorEl={anchorEl}
-                          open={Boolean(anchorEl)}
-                          onClose={() => setAnchorEls((prev) => ({ ...prev, [post.id]: null }))}
-                        >
-                          <MenuItem onClick={(e) => { e.stopPropagation(); handleCardClick(post); setAnchorEls((prev) => ({ ...prev, [post.id]: null })); }}>
-                            Chỉnh sửa
-                          </MenuItem>
-                          <MenuItem onClick={(e) => handleDeletePost(e, post.id)}>
-                            Xoá bài viết
-                          </MenuItem>
-                        </Menu>
-                      </>
-                    )}
-                  </Stack>
+                {isOwnPost && (
+                  <Box sx={{ marginLeft: 'auto' }}>
+                    <IconButton onClick={(e) => {
+                      e.stopPropagation();
+                      setAnchorEls((prev) => ({ ...prev, [post.id]: e.currentTarget }));
+                    }}>
+                      <MoreVert />
+                    </IconButton>
+                    <Menu
+                      anchorEl={anchorEl}
+                      open={Boolean(anchorEl)}
+                      onClose={() => setAnchorEls((prev) => ({ ...prev, [post.id]: null }))}
+                    >
+                      <MenuItem onClick={(e) => handleEditPost(e, post)}>Chỉnh sửa</MenuItem>
+                      <MenuItem onClick={(e) => handleDeletePost(e, post.id)}>Xoá bài viết</MenuItem>
+                    </Menu>
+                  </Box>
+                )}
+              </Stack>
                 </Box>
 
                 <Divider sx={{ my: 2 }} />
@@ -352,7 +320,7 @@ function PostList({ userId }) {
                       ) : (
                         <FavoriteBorder sx={{ fontSize: 20, color: '#FE5E7E' }} />
                       )}
-                    </IconButton>
+                </IconButton>
                     <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
                       {post.likesCount} lượt thích
                     </Typography>
@@ -360,7 +328,7 @@ function PostList({ userId }) {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleCommentClick(post.id); }} sx={{ '&:hover': { color: '#BC3AAA' } }}>
                       <Comment sx={{ fontSize: 18, color: '#FE5E7E' }} />
-                    </IconButton>
+                </IconButton>
                     <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
                       {post.comments} bình luận
                     </Typography>
@@ -373,7 +341,7 @@ function PostList({ userId }) {
                   </Box>
                 </Box>
 
-                {showCommentForm[post.id] && (
+              {showCommentForm[post.id] && (
                   <Box
                     ref={(el) => (commentFormRef.current[post.id] = el)}
                     sx={{
@@ -384,9 +352,9 @@ function PostList({ userId }) {
                       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
                     }}
                   >
-                    <TextField
-                      fullWidth
-                      multiline
+                  <TextField
+                    fullWidth
+                    multiline
                       rows={3}
                       value={commentText[post.id] || ''}
                       onChange={(e) => setCommentText((prev) => ({
@@ -402,10 +370,10 @@ function PostList({ userId }) {
                           '&:hover fieldset': { borderColor: '#BC3AAA' },
                         },
                       }}
-                    />
-                    <Button
-                      variant="contained"
-                      onClick={() => handleCommentSubmit(post.id)}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={() => handleCommentSubmit(post.id)}
                       disabled={!commentText[post.id]?.trim()}
                       sx={{
                         bgcolor: '#BC3AAA',
@@ -414,12 +382,12 @@ function PostList({ userId }) {
                         textTransform: 'none',
                         '&:hover': { bgcolor: '#a2308f' },
                       }}
-                    >
+                  >
                       Gửi bình luận
-                    </Button>
-                  </Box>
-                )}
-              </CardContent>
+                  </Button>
+                </Box>
+              )}
+            </CardContent>
             </Box>
           </Card>
         );
@@ -428,12 +396,23 @@ function PostList({ userId }) {
       {selectedPost && (
         <PostDetailModal
           open={Boolean(selectedPost)}
-          onClose={handleCloseModal}
+          onClose={() => setSelectedPost(null)}
           post={selectedPost}
           onUpdatePost={handleUpdatePost}
         />
       )}
-      
+
+      {editingPost && (
+        <EditPostModal
+          open={editModalOpen}
+          onClose={() => setEditModalOpen(false)}
+          post={editingPost}
+          onPostUpdated={(updated) => {
+            handleUpdatePost(updated);
+            setEditModalOpen(false);
+          }}
+        />
+      )}
     </Box>
   );
 }
