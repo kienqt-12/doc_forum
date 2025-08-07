@@ -1,10 +1,11 @@
+// ⬇️ Không đổi phần import
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Card, CardContent, Typography, Avatar,
-  IconButton, Rating, Divider, Stack, TextField, Button
+  IconButton, Rating, Divider, Stack, TextField, Button, Menu, MenuItem
 } from '@mui/material';
 import {
-  Favorite, FavoriteBorder, Share, Comment, Visibility
+  Favorite, FavoriteBorder, Share, Comment, Visibility, MoreVert
 } from '@mui/icons-material';
 import useNavigation from '../../hooks/useNavigation';
 import { useAuth } from '../../context/AuthContext';
@@ -25,6 +26,8 @@ function PostList({ userId }) {
   const { goToLogin, goToProfile } = useNavigation();
   const { user } = useAuth();
 
+  const [anchorEls, setAnchorEls] = useState({});
+
   const fetchPosts = async () => {
     try {
       const res = await axiosClient.get('/posts');
@@ -32,7 +35,6 @@ function PostList({ userId }) {
 
       let data = res.data;
 
-      // ✅ Lọc bài viết theo userId nếu có truyền vào
       if (userId) {
         data = data.filter((post) => post.author?._id === userId);
       }
@@ -237,154 +239,191 @@ function PostList({ userId }) {
     );
   };
 
+  const handleDeletePost = async (e, postId) => {
+    e.stopPropagation();
+    try {
+      await axiosClient.delete(`/posts/${postId}`);
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
+      toast.success('Đã xoá bài viết');
+    } catch (error) {
+      console.error('❌ Xoá bài viết lỗi:', error);
+      toast.error('Không thể xoá bài viết');
+    }
+  };
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, px: 3, pt: 3 }}>
-      {posts.map((post) => (
-        // Card hiển thị từng bài viết
-        <Card
-          key={post.id}
-          onClick={() => handleCardClick(post)}
-          sx={{
-            display: 'flex',
-            flexDirection: 'row',
-            borderRadius: '16px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-            bgcolor: '#fff',
-            border: '1px solid #BC3AAA',
-            transition: 'all 0.3s ease',
-            '&:hover': {
-              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
-              transform: 'translateY(-4px)'
-            },
-            overflow: 'hidden'
-          }}
-        >
-          {post.imageUrl && (
-            <Box sx={{ width: 160, height: 180, borderRight: '2px solid #BC3AAA' }}>
-              <img src={post.imageUrl} alt="Ảnh bài viết" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            </Box>
-          )}
+      {posts.map((post) => {
+        const isOwnPost = user?._id === post.author?._id;
+        const anchorEl = anchorEls[post.id] || null;
 
-          <Box sx={{ display: 'flex', flex: 1, paddingLeft: '40px' }}>
-            <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
-              <Avatar
-                src={post.image}
-                alt={post.author?.name || 'Author'}
-                sx={{
-                  width: 60,
-                  height: 60,
-                  cursor: 'pointer',
-                  border: '2px solid transparent',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    borderColor: '#BC3AAA',
-                    transform: 'scale(1.1)'
-                  }
-                }}
-                onClick={(e) => handleAvatarClick(e, post)}
-              />
-            </Box>
-
-            <CardContent sx={{ flex: 1, p: 2, pt: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
-                <Box>
-                  <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
-                    {post.title}
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: '#666' }}>
-                    {post.hoursAgo}
-                  </Typography>
-                </Box>
-
-                <Stack direction="row" spacing={1.5} alignItems="center">
-                  <Rating value={post.rating} readOnly precision={0.5} sx={{ fontSize: '1.1rem', color: '#FFD700' }} />
-                  <IconButton size="small" sx={{ '&:hover': { color: '#BC3AAA' } }}>
-                    <Share sx={{ fontSize: 20, color: '#FE5E7E' }} />
-                  </IconButton>
-                </Stack>
+        return (
+          <Card
+            key={post.id}
+            onClick={() => handleCardClick(post)}
+            sx={{
+              display: 'flex',
+              flexDirection: 'row',
+              borderRadius: '16px',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+              bgcolor: '#fff',
+              border: '1px solid #BC3AAA',
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+                transform: 'translateY(-4px)'
+              },
+              overflow: 'hidden'
+            }}
+          >
+            {post.imageUrl && (
+              <Box sx={{ width: 160, height: 180, borderRight: '2px solid #BC3AAA' }}>
+                <img src={post.imageUrl} alt="Ảnh bài viết" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </Box>
+            )}
 
-              <Divider sx={{ my: 2 }} />
-
-              <Box sx={{ display: 'flex', gap: 4, color: '#666', alignItems: 'center' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleLike(e, post); }} sx={{ '&:hover': { color: '#BC3AAA' } }}>
-                    {post.isLiked ? (
-                      <Favorite sx={{ fontSize: 20, color: '#BC3AAA' }} />
-                    ) : (
-                      <FavoriteBorder sx={{ fontSize: 20, color: '#FE5E7E' }} />
-                    )}
-                  </IconButton>
-                  <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
-                    {post.likesCount} lượt thích
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleCommentClick(post.id); }} sx={{ '&:hover': { color: '#BC3AAA' } }}>
-                    <Comment sx={{ fontSize: 18, color: '#FE5E7E' }} />
-                  </IconButton>
-                  <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
-                    {post.comments} bình luận
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Visibility sx={{ fontSize: 18 }} />
-                  <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
-                    {post.views} lượt xem
-                  </Typography>
-                </Box>
-              </Box>
-
-              {showCommentForm[post.id] && (
-                <Box
-                  ref={(el) => (commentFormRef.current[post.id] = el)}
+            <Box sx={{ display: 'flex', flex: 1, paddingLeft: '40px' }}>
+              <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
+                <Avatar
+                  src={post.image}
+                  alt={post.author?.name || 'Author'}
                   sx={{
-                    mt: 2,
-                    bgcolor: '#fff',
-                    borderRadius: '8px',
-                    p: 2,
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+                    width: 60,
+                    height: 60,
+                    cursor: 'pointer',
+                    border: '2px solid transparent',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      borderColor: '#BC3AAA',
+                      transform: 'scale(1.1)'
+                    }
                   }}
-                >
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={3}
-                    value={commentText[post.id] || ''}
-                    onChange={(e) => setCommentText((prev) => ({
-                      ...prev,
-                      [post.id]: e.target.value
-                    }))}
-                    placeholder="Viết bình luận của bạn..."
+                  onClick={(e) => handleAvatarClick(e, post)}
+                />
+              </Box>
+
+              <CardContent sx={{ flex: 1, p: 2, pt: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
+                      {post.title}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#666' }}>
+                      {post.hoursAgo}
+                    </Typography>
+                  </Box>
+
+                  <Stack direction="row" spacing={1.5} alignItems="center">
+                    <Rating value={post.rating} readOnly precision={0.5} sx={{ fontSize: '1.1rem', color: '#FFD700' }} />
+                    {isOwnPost && (
+                      <>
+                        <IconButton
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAnchorEls((prev) => ({ ...prev, [post.id]: e.currentTarget }));
+                          }}
+                        >
+                          <MoreVert />
+                        </IconButton>
+                        <Menu
+                          anchorEl={anchorEl}
+                          open={Boolean(anchorEl)}
+                          onClose={() => setAnchorEls((prev) => ({ ...prev, [post.id]: null }))}
+                        >
+                          <MenuItem onClick={(e) => { e.stopPropagation(); handleCardClick(post); setAnchorEls((prev) => ({ ...prev, [post.id]: null })); }}>
+                            Chỉnh sửa
+                          </MenuItem>
+                          <MenuItem onClick={(e) => handleDeletePost(e, post.id)}>
+                            Xoá bài viết
+                          </MenuItem>
+                        </Menu>
+                      </>
+                    )}
+                  </Stack>
+                </Box>
+
+                <Divider sx={{ my: 2 }} />
+
+                <Box sx={{ display: 'flex', gap: 4, color: '#666', alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleLike(e, post); }} sx={{ '&:hover': { color: '#BC3AAA' } }}>
+                      {post.isLiked ? (
+                        <Favorite sx={{ fontSize: 20, color: '#BC3AAA' }} />
+                      ) : (
+                        <FavoriteBorder sx={{ fontSize: 20, color: '#FE5E7E' }} />
+                      )}
+                    </IconButton>
+                    <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                      {post.likesCount} lượt thích
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleCommentClick(post.id); }} sx={{ '&:hover': { color: '#BC3AAA' } }}>
+                      <Comment sx={{ fontSize: 18, color: '#FE5E7E' }} />
+                    </IconButton>
+                    <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                      {post.comments} bình luận
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Visibility sx={{ fontSize: 18 }} />
+                    <Typography variant="body2" sx={{ fontSize: '0.85rem' }}>
+                      {post.views} lượt xem
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {showCommentForm[post.id] && (
+                  <Box
+                    ref={(el) => (commentFormRef.current[post.id] = el)}
                     sx={{
-                      mb: 2,
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: '8px',
-                        '& fieldset': { borderColor: '#BC3AAA' },
-                        '&:hover fieldset': { borderColor: '#BC3AAA' },
-                      },
-                    }}
-                  />
-                  <Button
-                    variant="contained"
-                    onClick={() => handleCommentSubmit(post.id)}
-                    disabled={!commentText[post.id]?.trim()}
-                    sx={{
-                      bgcolor: '#BC3AAA',
-                      color: '#fff',
+                      mt: 2,
+                      bgcolor: '#fff',
                       borderRadius: '8px',
-                      textTransform: 'none',
-                      '&:hover': { bgcolor: '#a2308f' },
+                      p: 2,
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
                     }}
                   >
-                    Gửi bình luận
-                  </Button>
-                </Box>
-              )}
-            </CardContent>
-          </Box>
-        </Card>
-      ))}
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={3}
+                      value={commentText[post.id] || ''}
+                      onChange={(e) => setCommentText((prev) => ({
+                        ...prev,
+                        [post.id]: e.target.value
+                      }))}
+                      placeholder="Viết bình luận của bạn..."
+                      sx={{
+                        mb: 2,
+                        '& .MuiOutlinedInput-root': {
+                          borderRadius: '8px',
+                          '& fieldset': { borderColor: '#BC3AAA' },
+                          '&:hover fieldset': { borderColor: '#BC3AAA' },
+                        },
+                      }}
+                    />
+                    <Button
+                      variant="contained"
+                      onClick={() => handleCommentSubmit(post.id)}
+                      disabled={!commentText[post.id]?.trim()}
+                      sx={{
+                        bgcolor: '#BC3AAA',
+                        color: '#fff',
+                        borderRadius: '8px',
+                        textTransform: 'none',
+                        '&:hover': { bgcolor: '#a2308f' },
+                      }}
+                    >
+                      Gửi bình luận
+                    </Button>
+                  </Box>
+                )}
+              </CardContent>
+            </Box>
+          </Card>
+        );
+      })}
 
       {selectedPost && (
         <PostDetailModal
@@ -394,6 +433,7 @@ function PostList({ userId }) {
           onUpdatePost={handleUpdatePost}
         />
       )}
+      
     </Box>
   );
 }
