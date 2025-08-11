@@ -9,15 +9,14 @@
   const AuthContext = createContext();
 
   export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null);
+    const [firebaseUser, setFirebaseUser] = useState(null);   // ✅ Firebase user
+    const [backendUser, setBackendUser] = useState(null);     // ✅ Backend user
     const [isSigningIn, setIsSigningIn] = useState(false);
 
-    // ✅ Gọi backend để tạo/lấy user từ Firebase user
-    const syncWithBackend = async (firebaseUser) => {
+    const syncWithBackend = async (firebaseUserRaw) => {
       try {
-        const token = await firebaseUser.getIdToken();
-        console.log('🔑 Firebase token (syncWithBackend):', token); // In token
-        localStorage.setItem('accessToken', token); // Lưu token vào localStorage
+        const token = await firebaseUserRaw.getIdToken();
+        localStorage.setItem('accessToken', token); // optional
 
         const res = await fetch('http://localhost:8017/v1/login', {
           method: 'POST',
@@ -26,22 +25,24 @@
             Authorization: `Bearer ${token}`
           },
           body: JSON.stringify({
-            name: firebaseUser.displayName,
-            email: firebaseUser.email,
-            avatar: firebaseUser.photoURL
+            name: firebaseUserRaw.displayName,
+            email: firebaseUserRaw.email,
+            avatar: firebaseUserRaw.photoURL
           })
         });
 
         if (!res.ok) throw new Error('❌ Backend sync failed');
 
         const data = await res.json();
-        setUser(data.user);
-        console.log('✅ Synced with backend:', data.user);
+        setBackendUser(data.user);
+        setFirebaseUser(firebaseUserRaw); // <-- raw Firebase user!
       } catch (err) {
         console.error('❌ Error syncing user:', err);
-        setUser(null);
+        setBackendUser(null);
+        setFirebaseUser(null);
       }
     };
+
 
     const login = async () => {
       if (isSigningIn) return;
@@ -49,10 +50,7 @@
 
       try {
         const result = await signInWithPopup(auth, provider);
-        const firebaseUser = result.user;
-        const token = await firebaseUser.getIdToken();
-        console.log('🔑 Firebase token (login):', token); // In token
-        await syncWithBackend(firebaseUser);
+        await syncWithBackend(result.user);
       } catch (error) {
         console.error('❌ Login error:', error);
       } finally {
@@ -62,19 +60,19 @@
 
     const logout = async () => {
       await firebaseLogout(auth);
-      setUser(null);
-      localStorage.removeItem('accessToken'); // Xóa token khi đăng xuất
-      console.log('🔑 Firebase token cleared from localStorage');
+      setBackendUser(null);
+      setFirebaseUser(null);
+      localStorage.removeItem('accessToken');
     };
 
     useEffect(() => {
-      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-        if (firebaseUser && !isSigningIn) {
-          syncWithBackend(firebaseUser);
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        if (user && !isSigningIn) {
+          syncWithBackend(user);
         } else {
-          setUser(null);
-          localStorage.removeItem('accessToken'); // Xóa token nếu không có user
-          console.log('🔑 No user, token cleared from localStorage');
+          setBackendUser(null);
+          setFirebaseUser(null);
+          localStorage.removeItem('accessToken');
         }
       });
 
@@ -82,7 +80,7 @@
     }, [isSigningIn]);
 
     return (
-      <AuthContext.Provider value={{ user, login, logout }}>
+      <AuthContext.Provider value={{ user: backendUser, firebaseUser, login, logout }}>
         {children}
       </AuthContext.Provider>
     );
