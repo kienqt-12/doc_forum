@@ -3,6 +3,7 @@ import { StatusCodes } from 'http-status-codes'
 import { loginRouter } from './loginRouters.js'
 import { userRouter } from './userRouters.js'
 import { postRouter } from './createPostRouters.js'
+import { friendRouter } from './friendRouters.js';
 
 const router = express.Router()
 
@@ -16,5 +17,5 @@ router.use('/login', loginRouter)
 router.use('/users', userRouter) // <== Đảm bảo dòng này có
 
 router.use('/posts', postRouter) // ✅ Dòng này CẦN PHẢI CÓ
-
+router.use('/friends', friendRouter)
 export const APIs_v1 = router

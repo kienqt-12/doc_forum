@@ -7,6 +7,6 @@ const Router = express.Router()
 Router.route('/')
   .post(verifyFirebaseToken, userController.createOrFindUser)
 Router.route('/me').get(verifyFirebaseToken, userController.createOrFindUser)
-Router.route('/:id').get(userController.getUserById)
+Router.route('/:id').get( verifyFirebaseToken, userController.getUserById)
 
 export const userRouter = Router
