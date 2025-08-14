@@ -1,5 +1,7 @@
-import { UserModel } from '~/models/user';
-import { PostModel } from '~/models/createPost';
+import { UserModel } from '~/models/user'
+import { PostModel } from '~/models/postModel'
+import { NotificationModel } from '~/models/notification'
+import { ObjectId } from 'mongodb'
 
 export const postController = {
   async createPost(req, res) {
@@ -8,11 +10,31 @@ export const postController = {
 
       const postData = {
         ...req.body,
-        author: { _id, name, email, avatar } 
+        author: { _id, name, email, avatar }
       };
 
+      // 1. Tạo bài viết mới
       const result = await PostModel.createNew(postData);
-      return res.status(201).json(result);
+      const postId = result.insertedId;
+
+      // 2. Lấy danh sách bạn bè của người dùng
+      const friends = await UserModel.getFriends(_id);
+
+      // 3. Tạo thông báo cho từng bạn bè
+      const notifications = friends.map(friend => ({
+        userId: new ObjectId(friend._id),
+        fromUserId: new ObjectId(_id),
+        type: 'new_post',
+        postId: postId,
+        message: `${name} đã đăng bài viết mới.`,
+        isRead: false,
+        createdAt: new Date()
+      }));
+
+      await NotificationModel.createMany(notifications);
+
+      // 4. Trả về kết quả tạo bài viết
+      return res.status(201).json({ message: 'Tạo bài viết thành công', postId });
     } catch (error) {
       console.error('❌ Lỗi tạo bài viết:', error);
       return res.status(500).json({ error: error.message });

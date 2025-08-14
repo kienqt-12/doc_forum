@@ -3,7 +3,10 @@ import { StatusCodes } from 'http-status-codes'
 import { loginRouter } from './loginRouters.js'
 import { userRouter } from './userRouters.js'
 import { postRouter } from './createPostRouters.js'
-import { friendRouter } from './friendRouters.js';
+import { friendRouter } from './friendRouters.js'
+import { notiRouter } from './notificationRouters.js'
+import { topRankRouter } from './topRankRouters.js'
+import { messagesRoute } from './messageRouters.js'
 
 const router = express.Router()
 
@@ -14,8 +17,11 @@ router.get('/status', (req, res) => {
 })
 
 router.use('/login', loginRouter)
-router.use('/users', userRouter) // <== Đảm bảo dòng này có
-
-router.use('/posts', postRouter) // ✅ Dòng này CẦN PHẢI CÓ
+router.use('/users', userRouter)
+router.use('/posts', postRouter)
 router.use('/friends', friendRouter)
+router.use('/notifications', notiRouter)
+router.use('/ranking', topRankRouter )
+router.use('/messages', messagesRoute)
+
 export const APIs_v1 = router

@@ -1,7 +1,7 @@
-import { GET_DB } from '~/config/mongodb';
-import { ObjectId } from 'mongodb';
+import { GET_DB } from '~/config/mongodb'
+import { ObjectId } from 'mongodb'
 
-const USER_COLLECTION_NAME = 'users';
+const USER_COLLECTION_NAME = 'users'
 
 export const UserModel = {
   async createNew(data) {
@@ -12,18 +12,18 @@ export const UserModel = {
       friendRequestsReceived: [],
       createdAt: new Date(),
       updatedAt: new Date()
-    };
+    }
 
-    const result = await GET_DB().collection(USER_COLLECTION_NAME).insertOne(newUser);
-    return await GET_DB().collection(USER_COLLECTION_NAME).findOne({ _id: result.insertedId });
+    const result = await GET_DB().collection(USER_COLLECTION_NAME).insertOne(newUser)
+    return await GET_DB().collection(USER_COLLECTION_NAME).findOne({ _id: result.insertedId })
   },
 
   async findByEmail(email) {
-    return await GET_DB().collection(USER_COLLECTION_NAME).findOne({ email });
+    return await GET_DB().collection(USER_COLLECTION_NAME).findOne({ email })
   },
 
   async findById(id) {
-    return await GET_DB().collection(USER_COLLECTION_NAME).findOne({ _id: new ObjectId(id) });
+    return await GET_DB().collection(USER_COLLECTION_NAME).findOne({ _id: new ObjectId(id) })
   },
 
   async pushToArray(userId, field, value) {
@@ -47,13 +47,13 @@ export const UserModel = {
   },
 
   async getUsersByIds(ids = []) {
-    if (!Array.isArray(ids) || ids.length === 0) return [];
-    const objectIds = ids.map(id => new ObjectId(id));
+    if (!Array.isArray(ids) || ids.length === 0) return []
+    const objectIds = ids.map(id => new ObjectId(id))
     return await GET_DB()
       .collection(USER_COLLECTION_NAME)
       .find({ _id: { $in: objectIds } })
       .project({ name: 1, email: 1, avatar: 1 })
-      .toArray();
+      .toArray()
   },
 
   async sendFriendRequest(currentUserId, targetUserId) {
@@ -62,12 +62,12 @@ export const UserModel = {
       this.findById(targetUserId)
     ]);
 
-    if (!targetUser) throw new Error('Người dùng không tồn tại.');
+    if (!targetUser) throw new Error('Người dùng không tồn tại.')
     if (
       currentUser.friends?.includes(targetUserId) ||
       currentUser.friendRequestsSent?.includes(targetUserId)
     ) {
-      throw new Error('Đã gửi yêu cầu hoặc đã là bạn bè.');
+      throw new Error('Đã gửi yêu cầu hoặc đã là bạn bè.')
     }
 
     await Promise.all([
@@ -79,7 +79,7 @@ export const UserModel = {
   async acceptFriendRequest(currentUserId, requesterId) {
     const currentUser = await this.findById(currentUserId)
     if (!currentUser.friendRequestsReceived?.some(id => id.toString() === requesterId.toString())) {
-      throw new Error('Không có yêu cầu từ người này.');
+      throw new Error('Không có yêu cầu từ người này.')
     }
     await Promise.all([
       this.pullFromArray(currentUserId, 'friendRequestsReceived', requesterId),
@@ -100,27 +100,71 @@ export const UserModel = {
     await Promise.all([
       this.pullFromArray(currentUserId, 'friendRequestsSent', targetUserId),
       this.pullFromArray(targetUserId, 'friendRequestsReceived', currentUserId)
-    ]);
+    ])
   },
 
   async unfriend(currentUserId, friendId) {
     await Promise.all([
       this.pullFromArray(currentUserId, 'friends', friendId),
       this.pullFromArray(friendId, 'friends', currentUserId)
-    ]);
+    ])
   },
 
   async getFriends(userId) {
-    const user = await this.findById(userId);
-    return await this.getUsersByIds(user.friends || []);
+    const user = await this.findById(userId)
+    return await this.getUsersByIds(user.friends || [])
   },
 
   async getFriendRequests(userId) {
-    const user = await this.findById(userId);
+    const user = await this.findById(userId)
     const [received, sent] = await Promise.all([
       this.getUsersByIds(user.friendRequestsReceived || []),
       this.getUsersByIds(user.friendRequestsSent || [])
-    ]);
-    return { received, sent };
+    ])
+    return { received, sent }
+  },
+
+  async getTopUsersByPosts(limit = 5) {
+    const db = GET_DB()
+    return db.collection('users').aggregate([
+      {
+        $lookup: {
+          from: 'posts',
+          let: { userId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: [
+                    { $toObjectId: '$author._id' },
+                    '$$userId'
+                  ]
+                }
+              }
+            }
+          ],
+          as: 'userPosts'
+        }
+      },
+      {
+        $addFields: {
+          postCount: { $size: '$userPosts' }
+        }
+      },
+      {
+        $sort: { postCount: -1 }
+      },
+      {
+        $limit: limit
+      },
+      {
+        $project: {
+          name: 1,
+          avatar: 1,
+          postCount: 1
+        }
+      }
+    ]).toArray()
   }
-};
+
+}
