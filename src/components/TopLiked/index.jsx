@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'
 import {
   Box,
   Typography,
@@ -6,141 +6,160 @@ import {
   Stack,
   Tabs,
   Tab,
-  Divider,
-} from '@mui/material';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import PeopleAltIcon from '@mui/icons-material/PeopleAlt';
+  Divider
+} from '@mui/material'
+import FavoriteIcon from '@mui/icons-material/Favorite'
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents'
+import PeopleAltIcon from '@mui/icons-material/PeopleAlt'
 
-const PRIMARY_COLOR = '#FE5E7E';
-const LIGHT_PINK = '#FFF5F8';
-const LIGHTER_PINK = '#FFE9EF';
-
-const topPosts = [
-  { id: 1, author: 'Nguyễn Văn A', avatar: 'https://i.pravatar.cc/100?img=1', title: 'Lập trình là đam mê không chỉ là công việc!', likes: 1200 },
-  { id: 2, author: 'Trần Thị B', avatar: 'https://i.pravatar.cc/100?img=2', title: 'Tips học React hiệu quả cho người mới bắt đầu', likes: 950 },
-  { id: 3, author: 'Lê Minh C', avatar: 'https://i.pravatar.cc/100?img=3', title: 'Cách tối ưu hóa code JavaScript cho hiệu suất cao', likes: 800 },
-  { id: 4, author: 'Phạm Thị D', avatar: 'https://i.pravatar.cc/100?img=8', title: 'Hành trình từ zero đến hero trong Python', likes: 1100 },
-  { id: 5, author: 'Vũ Văn E', avatar: 'https://i.pravatar.cc/100?img=9', title: 'Tìm hiểu về AI và ứng dụng trong lập trình', likes: 650 },
-];
-
-const topDoctors = [
-  { id: 1, name: 'BS. Trần Quốc Hưng', avatar: 'https://i.pravatar.cc/100?img=4', specialty: 'Tim mạch', likes: 1020 },
-  { id: 2, name: 'BS. Nguyễn Thanh Lan', avatar: 'https://i.pravatar.cc/100?img=5', specialty: 'Nhi khoa', likes: 870 },
-  { id: 3, name: 'BS. Đỗ Thị Mai', avatar: 'https://i.pravatar.cc/100?img=10', specialty: 'Nội tiết', likes: 920 },
-  { id: 4, name: 'BS. Lê Văn Tâm', avatar: 'https://i.pravatar.cc/100?img=11', specialty: 'Da liễu', likes: 780 },
-  { id: 5, name: 'BS. Hoàng Minh Đức', avatar: 'https://i.pravatar.cc/100?img=12', specialty: 'Xương khớp', likes: 1050 },
-];
-
-const topUsers = [
-  { id: 1, name: 'Phạm Văn Dũng', avatar: 'https://i.pravatar.cc/100?img=6', posts: 55 },
-  { id: 2, name: 'Hoàng Thị Hoa', avatar: 'https://i.pravatar.cc/100?img=7', posts: 42 },
-  { id: 3, name: 'Nguyễn Thị Linh', avatar: 'https://i.pravatar.cc/100?img=13', posts: 38 },
-  { id: 4, name: 'Trần Văn Nam', avatar: 'https://i.pravatar.cc/100?img=14', posts: 60 },
-  { id: 5, name: 'Lê Thị Ngọc', avatar: 'https://i.pravatar.cc/100?img=15', posts: 29 },
-];
+const PRIMARY_COLOR = '#FE5E7E'
+const LIGHT_PINK = '#FFF5F8'
+const LIGHTER_PINK = '#FFE9EF'
 
 const TopRankedSection = () => {
-  const [tabIndex, setTabIndex] = useState(0);
+  const [tabIndex, setTabIndex] = useState(0)
+  const [data, setData] = useState({
+    posts: [],
+    doctors: [],
+    users: []
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch('http://localhost:8017/v1/ranking') // hoặc URL backend của bạn
+        const result = await res.json()
+        setData({
+          posts: result.posts || [],
+          doctors: result.doctors || [],
+          users: result.users || []
+        })
+      } catch (err) {
+        console.error('Lỗi khi fetch top rank:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
 
   const handleTabChange = (_, newIndex) => {
-    setTabIndex(newIndex);
-  };
+    setTabIndex(newIndex)
+  }
 
   const renderList = () => {
+    if (loading) {
+      return <Typography align='center'>Đang tải...</Typography>
+    }
+
     switch (tabIndex) {
       case 0:
-        return topPosts.map((post) => (
-          <Stack
-            key={post.id}
-            direction="row"
-            alignItems="center"
-            spacing={2}
-            sx={{
-              p: 2,
-              borderRadius: 2,
-              bgcolor: LIGHT_PINK,
-              '&:hover': {
-                bgcolor: LIGHTER_PINK,
-              },
-              transition: '0.2s ease',
-            }}
-          >
-            <Avatar src={post.avatar} />
-            <Box flex={1}>
-              <Typography fontWeight={600}>{post.title}</Typography>
-              <Typography variant="caption" color="text.secondary">{post.author}</Typography>
-            </Box>
-            <Stack direction="row" alignItems="center" spacing={0.5}>
-              <FavoriteIcon sx={{ color: PRIMARY_COLOR, fontSize: 18 }} />
-              <Typography variant="body2" fontWeight={500}>
-                {post.likes}
-              </Typography>
+        return data.posts
+          .filter(post => post.likes !== 0) // ẩn bài có 0 lượt like
+          .map((post) => (
+            <Stack
+              key={post._id?.toString()}
+              direction='row'
+              alignItems='center'
+              spacing={2}
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: LIGHT_PINK,
+                '&:hover': { bgcolor: LIGHTER_PINK },
+                transition: '0.2s ease'
+              }}
+            >
+              <Avatar src={post.avatar} />
+              <Box flex={1}>
+                <Typography fontWeight={600}>{post.title}</Typography>
+                <Typography variant='caption' color='text.secondary'>
+                  {post.author}
+                </Typography>
+              </Box>
+              <Stack direction='row' alignItems='center' spacing={0.5}>
+                <FavoriteIcon sx={{ color: PRIMARY_COLOR, fontSize: 18 }} />
+                <Typography variant='body2' fontWeight={500}>
+                  {post.likes}
+                </Typography>
+              </Stack>
             </Stack>
-          </Stack>
-        ));
+          ))
 
       case 1:
-        return topDoctors.map((doctor) => (
-          <Stack
-            key={doctor.id}
-            direction="row"
-            alignItems="center"
-            spacing={2}
-            sx={{
-              p: 2,
-              borderRadius: 2,
-              bgcolor: LIGHT_PINK,
-              '&:hover': {
-                bgcolor: LIGHTER_PINK,
-              },
-              transition: '0.2s ease',
-            }}
-          >
-            <Avatar src={doctor.avatar} />
-            <Box flex={1}>
-              <Typography fontWeight={600}>{doctor.name}</Typography>
-              <Typography variant="caption" color="text.secondary">{doctor.specialty}</Typography>
-            </Box>
-            <Stack direction="row" alignItems="center" spacing={0.5}>
-              <EmojiEventsIcon sx={{ color: PRIMARY_COLOR, fontSize: 18 }} />
-              <Typography variant="body2" fontWeight={500}>
-                {doctor.likes}
-              </Typography>
+        const doctorAvatars = [
+          'https://randomuser.me/api/portraits/men/32.jpg',
+          'https://randomuser.me/api/portraits/women/44.jpg',
+          'https://randomuser.me/api/portraits/men/53.jpg',
+          'https://randomuser.me/api/portraits/women/68.jpg',
+          'https://randomuser.me/api/portraits/men/77.jpg'
+        ];
+
+        return data.doctors
+          .filter(doctor => doctor.rating !== 0) // ẩn bác sĩ rating = 0
+          .map((doctor, index) => (
+            <Stack
+              key={doctor._id?.toString()}
+              direction='row'
+              alignItems='center'
+              spacing={2}
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: LIGHT_PINK,
+                '&:hover': { bgcolor: LIGHTER_PINK },
+                transition: '0.2s ease'
+              }}
+            >
+              <Avatar src={doctorAvatars[index % doctorAvatars.length]} />
+              <Box flex={1}>
+                <Typography fontWeight={600}>{doctor.name}</Typography>
+                <Typography variant='caption' color='text.secondary'>
+                  {doctor.specialty}
+                </Typography>
+              </Box>
+              <Stack direction='row' alignItems='center' spacing={0.5}>
+                <Typography variant='body2' fontWeight={600} color={PRIMARY_COLOR}>
+                  ⭐ {doctor.rating}
+                </Typography>
+              </Stack>
             </Stack>
-          </Stack>
-        ));
+          ))
 
       case 2:
-        return topUsers.map((user) => (
-          <Stack
-            key={user.id}
-            direction="row"
-            alignItems="center"
-            spacing={2}
-            sx={{
-              p: 2,
-              borderRadius: 2,
-              bgcolor: LIGHT_PINK,
-              '&:hover': {
-                bgcolor: LIGHTER_PINK,
-              },
-              transition: '0.2s ease',
-            }}
-          >
-            <Avatar src={user.avatar} />
-            <Box flex={1}>
-              <Typography fontWeight={600}>{user.name}</Typography>
-              <Typography variant="caption" color="text.secondary">{user.posts} bài viết</Typography>
-            </Box>
-            <PeopleAltIcon sx={{ color: PRIMARY_COLOR, fontSize: 20 }} />
-          </Stack>
-        ));
+        return data.users
+          .filter(user => user.postCount !== 0) // ẩn user có 0 bài viết
+          .map((user) => (
+            <Stack
+              key={user._id?.toString()}
+              direction='row'
+              alignItems='center'
+              spacing={2}
+              sx={{
+                p: 2,
+                borderRadius: 2,
+                bgcolor: LIGHT_PINK,
+                '&:hover': { bgcolor: LIGHTER_PINK },
+                transition: '0.2s ease'
+              }}
+            >
+              <Avatar src={user.avatar} />
+              <Box flex={1}>
+                <Typography fontWeight={600}>{user.name}</Typography>
+                <Typography variant='caption' color='text.secondary'>
+                  {user.postCount} bài viết
+                </Typography>
+              </Box>
+              <PeopleAltIcon sx={{ color: PRIMARY_COLOR, fontSize: 20 }} />
+            </Stack>
+          ))
 
       default:
-        return null;
+        return null
     }
-  };
+  }
 
   return (
     <Box
@@ -149,44 +168,42 @@ const TopRankedSection = () => {
         borderRadius: 2,
         p: 3,
         mt: 4,
-        boxShadow: 1,
+        boxShadow: 1
       }}
     >
-      <Typography variant="h6" fontWeight={700} mb={2} color={PRIMARY_COLOR}>
+      <Typography variant='h6' fontWeight={700} mb={2} color={PRIMARY_COLOR}>
         🎖️ Bảng xếp hạng nổi bật
       </Typography>
 
       <Tabs
         value={tabIndex}
         onChange={handleTabChange}
-        variant="fullWidth"
-        textColor="inherit"
-        indicatorColor="primary"
+        variant='fullWidth'
+        textColor='inherit'
+        indicatorColor='primary'
         sx={{
           '& .MuiTab-root': {
             fontWeight: 600,
             color: '#555',
             '&.Mui-selected': {
-              color: PRIMARY_COLOR,
-            },
+              color: PRIMARY_COLOR
+            }
           },
           '& .MuiTabs-indicator': {
-            backgroundColor: PRIMARY_COLOR,
-          },
+            backgroundColor: PRIMARY_COLOR
+          }
         }}
       >
-        <Tab icon={<FavoriteIcon />} label="Bài đăng" />
-        <Tab icon={<EmojiEventsIcon />} label="Bác sĩ" />
-        <Tab icon={<PeopleAltIcon />} label="Người dùng" />
+        <Tab icon={<FavoriteIcon />} label='Bài đăng' />
+        <Tab icon={<EmojiEventsIcon />} label='Bác sĩ' />
+        <Tab icon={<PeopleAltIcon />} label='Người dùng' />
       </Tabs>
 
       <Divider sx={{ my: 2 }} />
 
-      <Stack spacing={2}>
-        {renderList()}
-      </Stack>
+      <Stack spacing={2}>{renderList()}</Stack>
     </Box>
-  );
-};
+  )
+}
 
-export default TopRankedSection;
+export default TopRankedSection

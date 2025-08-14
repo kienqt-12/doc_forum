@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Box, Typography, Avatar, Stack, IconButton, Tooltip, Divider
-} from '@mui/material';
+import { Box, Typography, Avatar, Stack, IconButton, Tooltip, Divider } from '@mui/material';
 import ChatIcon from '@mui/icons-material/Chat';
+import ChatBox from '../../ChatBox';
 
-function FriendList({ onChatClick }) {
+function FriendList() {
   const [friends, setFriends] = useState([]);
+  const [selectedFriend, setSelectedFriend] = useState(null);
+
+  // Lấy currentUserId từ localStorage hoặc context
+  const currentUserId = localStorage.getItem('currentUserId');
 
   useEffect(() => {
     const fetchFriends = async () => {
@@ -23,7 +26,7 @@ function FriendList({ onChatClick }) {
         }
 
         const data = await res.json();
-        console.log("📌 Friends API data:", data); // kiểm tra dữ liệu
+        console.log("📌 Friends API data:", data);
         setFriends(data.friends || []);
       } catch (error) {
         console.error('❌ Lỗi tải bạn bè:', error);
@@ -34,55 +37,62 @@ function FriendList({ onChatClick }) {
   }, []);
 
   return (
-    <Box sx={{ width: 340, maxHeight: 420, bgcolor: '#fff', boxShadow: 4, borderRadius: 2, overflowY: 'auto', p: 2 }}>
-      <Typography variant="h6" fontWeight={700} mb={1} sx={{ color: '#9C27B0' }}>
-        👥 Danh sách bạn bè
-      </Typography>
+    <>
+      <Box sx={{ width: 340, maxHeight: 420, bgcolor: '#fff', boxShadow: 4, borderRadius: 2, overflowY: 'auto', p: 2 }}>
+        <Typography variant="h6" fontWeight={700} mb={1} sx={{ color: '#9C27B0' }}>
+          👥 Danh sách bạn bè
+        </Typography>
+        <Divider sx={{ mb: 1 }} />
 
-      <Divider sx={{ mb: 1 }} />
+        <Stack spacing={1.5}>
+          {friends.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              Bạn chưa có bạn bè nào.
+            </Typography>
+          ) : (
+            friends.map((friend) => (
+              <Box
+                key={friend._id}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  p: 1,
+                  borderRadius: 2,
+                  transition: 'all 0.25s ease',
+                  '&:hover': { backgroundColor: '#F3E5F5' },
+                }}
+              >
+                <Avatar src={friend.avatar} alt={friend.name} sx={{ mr: 1.5 }} />
 
-      <Stack spacing={1.5}>
-        {friends.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            Bạn chưa có bạn bè nào.
-          </Typography>
-        ) : (
-          friends.map((friend) => (
-            <Box
-              key={friend._id}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                p: 1,
-                borderRadius: 2,
-                transition: 'all 0.25s ease',
-                '&:hover': { backgroundColor: '#F3E5F5' },
-              }}
-            >
-              <Box sx={{ position: 'relative', mr: 1.5 }}>
-                <Avatar src={friend.avatar} alt={friend.name} />
+                <Box sx={{ flexGrow: 1 }}>
+                  <Typography fontWeight={500}>{friend.name}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Ngoại tuyến
+                  </Typography>
+                </Box>
+
+                <Tooltip title="Nhắn tin">
+                  <IconButton
+                    onClick={() => setSelectedFriend(friend)}
+                    sx={{ color: '#9C27B0', '&:hover': { color: '#7B1FA2' } }}
+                  >
+                    <ChatIcon />
+                  </IconButton>
+                </Tooltip>
               </Box>
+            ))
+          )}
+        </Stack>
+      </Box>
 
-              <Box sx={{ flexGrow: 1 }}>
-                <Typography fontWeight={500}>{friend.name}</Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Ngoại tuyến
-                </Typography>
-              </Box>
-
-              <Tooltip title="Nhắn tin">
-                <IconButton
-                  onClick={() => onChatClick && onChatClick(friend)}
-                  sx={{ color: '#9C27B0', '&:hover': { color: '#7B1FA2' } }}
-                >
-                  <ChatIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          ))
-        )}
-      </Stack>
-    </Box>
+      {selectedFriend && (
+        <ChatBox
+          friend={selectedFriend}
+          currentUserId={currentUserId}
+          onClose={() => setSelectedFriend(null)}
+        />
+      )}
+    </>
   );
 }
 

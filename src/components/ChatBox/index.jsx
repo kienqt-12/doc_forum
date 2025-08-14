@@ -1,23 +1,120 @@
-import React, { useState } from 'react';
-import {
-  Box,
-  Typography,
-  IconButton,
-  Avatar,
-  TextField,
-  Paper,
-} from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+import React, { useEffect, useState, useRef } from 'react';
+import { Box, Typography, Avatar, TextField, IconButton, Paper } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
+import io from 'socket.io-client';
+import { format } from 'date-fns';
 
-const ChatBox = ({ friend, onClose }) => {
-  const [message, setMessage] = useState('');
+const SOCKET_URL = 'http://localhost:8017';
+
+function ChatBox({ friend, onClose }) {
   const [messages, setMessages] = useState([]);
+  const [text, setText] = useState('');
+  const socketRef = useRef();
+  const messagesEndRef = useRef();
 
-  const handleSend = () => {
-    if (!message.trim()) return;
-    setMessages((prev) => [...prev, { sender: 'me', text: message }]);
-    setMessage('');
+  const currentUserId = localStorage.getItem('currentUserUid');
+  const token = localStorage.getItem('accessToken');
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+  useEffect(scrollToBottom, [messages]);
+
+  // Kết nối socket
+  useEffect(() => {
+    if (!currentUserId || !token || !friend?._id) return;
+
+    socketRef.current = io(SOCKET_URL, { auth: { token } });
+
+    socketRef.current.on('connect', () => {
+      console.log('✅ Connected to socket server');
+      socketRef.current.emit('joinRoom', { friendId: friend._id });
+    });
+
+    socketRef.current.on('receiveMessage', (msg) => {
+      // Chỉ push những tin nhắn liên quan tới cuộc trò chuyện này
+      const isRelevant =
+        msg.senderId === friend._id ||
+        msg.receiverId === friend._id ||
+        msg.senderId === currentUserId;
+      if (isRelevant) {
+        setMessages(prev => [
+          ...prev,
+          { ...msg, senderId: String(msg.senderId), receiverId: String(msg.receiverId) }
+        ]);
+      }
+    });
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.emit('leaveRoom', { friendId: friend._id });
+        socketRef.current.disconnect();
+      }
+    };
+  }, [friend, currentUserId, token]);
+
+  // Fetch lịch sử chat
+  useEffect(() => {
+    if (!friend?._id || !token) return;
+
+    const fetchMessages = async () => {
+      try {
+        const res = await fetch(`http://localhost:8017/v1/messages/${friend._id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error('Không thể tải tin nhắn');
+        const data = await res.json();
+
+        const formattedMessages = (data.messages || []).map(msg => ({
+          ...msg,
+          senderId: String(msg.senderId),
+          receiverId: String(msg.receiverId),
+        }));
+
+        setMessages(formattedMessages);
+      } catch (err) {
+        console.error('❌ Lỗi fetch messages:', err);
+      }
+    };
+
+    fetchMessages();
+  }, [friend, token]);
+
+  const handleSend = async () => {
+    if (!text.trim()) return;
+
+    try {
+      const res = await fetch('http://localhost:8017/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ receiverId: friend._id, text })
+      });
+
+      if (!res.ok) throw new Error('Lưu tin nhắn thất bại');
+      const data = await res.json();
+
+      const formattedMsg = {
+        ...data.data,
+        senderId: String(data.data.senderId),
+        receiverId: String(data.data.receiverId),
+      };
+
+      // Update UI
+      setMessages(prev => [...prev, formattedMsg]);
+
+      // Emit socket
+      if (socketRef.current && socketRef.current.connected) {
+        socketRef.current.emit('sendMessage', formattedMsg);
+      }
+
+      setText('');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') handleSend();
   };
 
   return (
@@ -27,86 +124,86 @@ const ChatBox = ({ friend, onClose }) => {
         position: 'fixed',
         bottom: 20,
         right: 20,
-        width: 320,
-        height: 420,
-        zIndex: 2000,
-        borderRadius: 2,
+        width: 400,
+        maxHeight: 600,
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'hidden',
+        borderRadius: 2,
+        overflow: 'hidden'
       }}
     >
       {/* Header */}
       <Box
         sx={{
-          p: 1.5,
           display: 'flex',
           alignItems: 'center',
           bgcolor: '#9C27B0',
           color: '#fff',
+          p: 1,
+          justifyContent: 'space-between'
         }}
       >
-        <Avatar src={friend.avatar} sx={{ mr: 1 }} />
-        <Typography fontWeight={600} flexGrow={1}>
-          {friend.name}
-        </Typography>
-        <IconButton size="small" onClick={onClose} sx={{ color: '#fff' }}>
-          <CloseIcon />
-        </IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Avatar src={friend.avatar} sx={{ mr: 1 }} />
+          <Typography fontWeight={700}>{friend.name}</Typography>
+        </Box>
+        <Box component="span" onClick={onClose} sx={{ cursor: 'pointer', fontWeight: 700 }}>✖</Box>
       </Box>
 
-      {/* Message list */}
-      <Box
-        sx={{
-          flexGrow: 1,
-          px: 1.5,
-          py: 1,
-          overflowY: 'auto',
-          bgcolor: '#fdfdfd',
-        }}
-      >
-        {messages.map((msg, idx) => (
-          <Box
-            key={idx}
-            sx={{
-              display: 'flex',
-              justifyContent: msg.sender === 'me' ? 'flex-end' : 'flex-start',
-              mb: 1,
-            }}
-          >
+      {/* Messages */}
+      <Box sx={{ flexGrow: 1, overflowY: 'auto', p: 2, bgcolor: '#F3E5F5' }}>
+        {messages.map((msg, idx) => {
+          const isMine = msg.senderId === currentUserId;
+
+          return (
             <Box
+              key={idx}
               sx={{
-                maxWidth: '70%',
-                px: 1.2,
-                py: 0.8,
-                bgcolor: msg.sender === 'me' ? '#E1BEE7' : '#F3E5F5',
-                borderRadius: 2,
+                display: 'flex',
+                justifyContent: isMine ? 'flex-end' : 'flex-start',
+                mb: 1,
+                alignItems: 'flex-end'
               }}
             >
-              <Typography fontSize="0.9rem">{msg.text}</Typography>
+              {!isMine && <Avatar src={friend.avatar} sx={{ width: 24, height: 24, mr: 1 }} />}
+              <Box
+                sx={{
+                  bgcolor: isMine ? '#9C27B0' : '#E1BEE7',
+                  color: isMine ? '#fff' : '#000',
+                  p: 1.2,
+                  borderRadius: 2,
+                  maxWidth: '75%',
+                  wordBreak: 'break-word'
+                }}
+              >
+                <Typography variant="body2">{msg.text}</Typography>
+                <Typography variant="caption" sx={{ display: 'block', textAlign: 'right', mt: 0.5 }}>
+                  {format(new Date(msg.createdAt), 'HH:mm')}
+                </Typography>
+              </Box>
             </Box>
-          </Box>
-        ))}
+          );
+        })}
+        <div ref={messagesEndRef} />
       </Box>
 
       {/* Input */}
-      <Box sx={{ p: 1, display: 'flex', gap: 1 }}>
+      <Box sx={{ display: 'flex', p: 1, bgcolor: '#fff' }}>
         <TextField
-          fullWidth
+          variant="outlined"
           size="small"
+          fullWidth
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyPress={handleKeyPress}
           placeholder="Nhập tin nhắn..."
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleSend();
-          }}
         />
-        <IconButton onClick={handleSend} color="primary">
+        <IconButton color="primary" onClick={handleSend}>
           <SendIcon />
         </IconButton>
       </Box>
     </Paper>
   );
-};
+}
 
 export default ChatBox;
