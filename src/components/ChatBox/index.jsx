@@ -1,14 +1,15 @@
+// src/components/ChatBox.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import { Box, Typography, Avatar, TextField, IconButton, Paper } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import io from 'socket.io-client';
 import { format } from 'date-fns';
-import { useAuth } from '~/context/AuthContext'; // import context
+import { useAuth } from '~/context/AuthContext';
 
 const SOCKET_URL = 'http://localhost:8017';
 
 function ChatBox({ friend, onClose }) {
-  const { user } = useAuth(); // backendUser từ context
+  const { user } = useAuth();
   const currentUserId = user?._id; 
   const currentUserAvatar = user?.avatar;
   const token = localStorage.getItem('accessToken');
@@ -18,7 +19,6 @@ function ChatBox({ friend, onClose }) {
   const socketRef = useRef();
   const messagesEndRef = useRef();
 
-  // Scroll xuống cuối khi có tin nhắn mới
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -35,11 +35,9 @@ function ChatBox({ friend, onClose }) {
       socketRef.current.emit('joinRoom', { friendId: friend._id });
     });
 
+    // Chỉ nhận message từ người khác
     socketRef.current.on('receiveMessage', (msg) => {
-      const isRelevant =
-        msg.senderId === friend._id || msg.receiverId === friend._id || msg.senderId === currentUserId;
-
-      if (isRelevant) {
+      if (msg.senderId !== currentUserId) {
         setMessages(prev => [
           ...prev,
           { ...msg, senderId: String(msg.senderId), receiverId: String(msg.receiverId) }
@@ -82,47 +80,48 @@ function ChatBox({ friend, onClose }) {
     fetchMessages();
   }, [friend, token]);
 
-  // Gửi tin nhắn
+  // Gửi tin nhắn (POST API + broadcast socket)
   const handleSend = async () => {
-    if (!text.trim()) return;
+  if (!text.trim()) return;
 
-    const msgPayload = {
-      senderId: currentUserId,
-      receiverId: friend._id,
-      text
-    };
-
-    try {
-      const res = await fetch('http://localhost:8017/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(msgPayload)
-      });
-
-      if (!res.ok) throw new Error('Lưu tin nhắn thất bại');
-      const data = await res.json();
-
-      const formattedMsg = {
-        ...data.data,
-        senderId: String(data.data.senderId),
-        receiverId: String(data.data.receiverId),
-      };
-
-      setMessages(prev => [...prev, formattedMsg]);
-
-      // Emit socket
-      if (socketRef.current && socketRef.current.connected) {
-        socketRef.current.emit('sendMessage', formattedMsg);
-      }
-
-      setText('');
-    } catch (err) {
-      console.error(err);
-    }
+  const msgPayload = {
+    receiverId: friend._id,
+    text
   };
+
+  try {
+    // 1️⃣ Gọi API lưu tin nhắn
+    const res = await fetch('http://localhost:8017/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(msgPayload)
+    });
+
+    if (!res.ok) throw new Error('Lưu tin nhắn thất bại');
+    const data = await res.json();
+
+    // 2️⃣ Thêm tin nhắn vào local state
+    const formattedMsg = {
+      ...data.data,
+      senderId: String(data.data.senderId),
+      receiverId: String(data.data.receiverId)
+    };
+    setMessages(prev => [...prev, formattedMsg]);
+
+    // 3️⃣ Emit socket chỉ sau khi lưu thành công
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('sendMessage', formattedMsg);
+    }
+
+    setText('');
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') handleSend();
@@ -144,16 +143,7 @@ function ChatBox({ friend, onClose }) {
       }}
     >
       {/* Header */}
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          bgcolor: '#9C27B0',
-          color: '#fff',
-          p: 1,
-          justifyContent: 'space-between'
-        }}
-      >
+      <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: '#9C27B0', color: '#fff', p: 1, justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Avatar src={friend.avatar} sx={{ mr: 1 }} />
           <Typography fontWeight={700}>{friend.name}</Typography>
@@ -178,16 +168,7 @@ function ChatBox({ friend, onClose }) {
             >
               {!isMine && <Avatar src={friend.avatar} sx={{ width: 24, height: 24, mr: 1 }} />}
               {isMine && <Avatar src={currentUserAvatar} sx={{ width: 24, height: 24, ml: 1 }} />}
-              <Box
-                sx={{
-                  bgcolor: isMine ? '#9C27B0' : '#E1BEE7',
-                  color: isMine ? '#fff' : '#000',
-                  p: 1.2,
-                  borderRadius: 2,
-                  maxWidth: '75%',
-                  wordBreak: 'break-word'
-                }}
-              >
+              <Box sx={{ bgcolor: isMine ? '#9C27B0' : '#E1BEE7', color: isMine ? '#fff' : '#000', p: 1.2, borderRadius: 2, maxWidth: '75%', wordBreak: 'break-word' }}>
                 <Typography variant="body2">{msg.text}</Typography>
                 <Typography variant="caption" sx={{ display: 'block', textAlign: 'right', mt: 0.5 }}>
                   {format(new Date(msg.createdAt), 'HH:mm')}
