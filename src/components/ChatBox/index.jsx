@@ -3,24 +3,28 @@ import { Box, Typography, Avatar, TextField, IconButton, Paper } from '@mui/mate
 import SendIcon from '@mui/icons-material/Send';
 import io from 'socket.io-client';
 import { format } from 'date-fns';
+import { useAuth } from '~/context/AuthContext'; // import context
 
 const SOCKET_URL = 'http://localhost:8017';
 
 function ChatBox({ friend, onClose }) {
+  const { user } = useAuth(); // backendUser từ context
+  const currentUserId = user?._id; 
+  const currentUserAvatar = user?.avatar;
+  const token = localStorage.getItem('accessToken');
+
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const socketRef = useRef();
   const messagesEndRef = useRef();
 
-  const currentUserId = localStorage.getItem('currentUserUid');
-  const token = localStorage.getItem('accessToken');
-
+  // Scroll xuống cuối khi có tin nhắn mới
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
   useEffect(scrollToBottom, [messages]);
 
-  // Kết nối socket
+  // Kết nối Socket
   useEffect(() => {
     if (!currentUserId || !token || !friend?._id) return;
 
@@ -32,11 +36,9 @@ function ChatBox({ friend, onClose }) {
     });
 
     socketRef.current.on('receiveMessage', (msg) => {
-      // Chỉ push những tin nhắn liên quan tới cuộc trò chuyện này
       const isRelevant =
-        msg.senderId === friend._id ||
-        msg.receiverId === friend._id ||
-        msg.senderId === currentUserId;
+        msg.senderId === friend._id || msg.receiverId === friend._id || msg.senderId === currentUserId;
+
       if (isRelevant) {
         setMessages(prev => [
           ...prev,
@@ -80,14 +82,24 @@ function ChatBox({ friend, onClose }) {
     fetchMessages();
   }, [friend, token]);
 
+  // Gửi tin nhắn
   const handleSend = async () => {
     if (!text.trim()) return;
+
+    const msgPayload = {
+      senderId: currentUserId,
+      receiverId: friend._id,
+      text
+    };
 
     try {
       const res = await fetch('http://localhost:8017/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ receiverId: friend._id, text })
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(msgPayload)
       });
 
       if (!res.ok) throw new Error('Lưu tin nhắn thất bại');
@@ -99,7 +111,6 @@ function ChatBox({ friend, onClose }) {
         receiverId: String(data.data.receiverId),
       };
 
-      // Update UI
       setMessages(prev => [...prev, formattedMsg]);
 
       // Emit socket
@@ -166,6 +177,7 @@ function ChatBox({ friend, onClose }) {
               }}
             >
               {!isMine && <Avatar src={friend.avatar} sx={{ width: 24, height: 24, mr: 1 }} />}
+              {isMine && <Avatar src={currentUserAvatar} sx={{ width: 24, height: 24, ml: 1 }} />}
               <Box
                 sx={{
                   bgcolor: isMine ? '#9C27B0' : '#E1BEE7',

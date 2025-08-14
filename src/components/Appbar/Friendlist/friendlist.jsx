@@ -2,13 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography, Avatar, Stack, IconButton, Tooltip, Divider } from '@mui/material';
 import ChatIcon from '@mui/icons-material/Chat';
 import ChatBox from '../../ChatBox';
+import { useAuth } from '../../../context/AuthContext';
 
 function FriendList() {
   const [friends, setFriends] = useState([]);
   const [selectedFriend, setSelectedFriend] = useState(null);
+  const { user } = useAuth(); // backendUser từ context
 
   // Lấy currentUserId từ localStorage hoặc context
-  const currentUserId = localStorage.getItem('currentUserId');
+  const currentUserId = user?._id; // ✅ luôn lấy đúng senderId
 
   useEffect(() => {
     const fetchFriends = async () => {
