@@ -1,6 +1,5 @@
 // src/sockets/chatsockets.js
 import { admin } from '~/config/firebaseAdmin.js';
-import { GET_DB } from '~/config/mongodb.js';
 import { UserModel } from '~/models/user.js';
 
 export const initSockets = (io) => {
@@ -49,35 +48,10 @@ export const initSockets = (io) => {
       console.log(`${socket.user.email} left room ${roomName}`);
     });
 
-    // Send message
-    socket.on('sendMessage', async (msg) => {
-      if (msg.senderId !== socket.user._id) {
-        console.warn('SenderId không hợp lệ:', msg.senderId);
-        return;
-      }
-
-      const db = GET_DB();
-      const newMessage = {
-        senderId: socket.user._id, // chắc chắn lấy _id MongoDB
-        receiverId: msg.receiverId,
-        text: msg.text,
-        createdAt: new Date(),
-        read: false,
-      };
-
-      try {
-        const result = await db.collection('messages').insertOne(newMessage);
-
-        const emitMsg = {
-          ...newMessage,
-          _id: result.insertedId.toString(),
-        };
-
-        const roomName = [socket.user._id, msg.receiverId].sort().join('_');
-        io.to(roomName).emit('receiveMessage', emitMsg);
-      } catch (err) {
-        console.error('❌ Lỗi lưu message:', err);
-      }
+    // Chỉ broadcast message tới room, không insert DB
+    socket.on('sendMessage', (msg) => {
+      const roomName = [socket.user._id, msg.receiverId].sort().join('_');
+      io.to(roomName).emit('receiveMessage', msg);
     });
 
     socket.on('disconnect', () => {

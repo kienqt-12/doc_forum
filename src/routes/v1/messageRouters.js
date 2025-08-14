@@ -1,8 +1,8 @@
-import express from 'express';
-import { GET_DB } from '~/config/mongodb.js';
-import { verifyFirebaseToken } from '~/middlewares/firebaseAuth';
+import express from 'express'
+import { GET_DB } from '~/config/mongodb.js'
+import { verifyFirebaseToken } from '~/middlewares/firebaseAuth'
 
-const router = express.Router();
+const router = express.Router()
 
 // GET /v1/messages/:friendId - lấy lịch sử chat
 router.get('/:friendId', verifyFirebaseToken, async (req, res) => {
