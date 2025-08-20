@@ -80,6 +80,7 @@ export const PostModel = {
         avatar: commentData.user.avatar
       },
       content: commentData.content,
+      imageUrl: commentData.imageUrl || '',
       createdAt: new Date()
     }
 
@@ -237,6 +238,28 @@ export const PostModel = {
         }
       }
     ]).toArray()
-  }
+  },
+  async findByDoctor(doctor, workplace, city) {
+    const db = GET_DB()
+    const result = await db.collection(POST_COLLECTION_NAME)
+      .find({
+        'author.name': doctor,
+        'author.workplace': workplace,
+        'author.city': city
+      })
+      .project({
+        _id: 1,
+        title: 1,
+        content: 1,
+        likes: 1,
+        createdAt: 1,
+        'author.name': 1,
+        'author.avatar': 1
+      })
+      .sort({ createdAt: -1 })
+      .toArray()
+
+    return result
+  },
 
 }

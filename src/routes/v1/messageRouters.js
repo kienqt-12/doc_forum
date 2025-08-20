@@ -41,26 +41,29 @@ router.post('/', verifyFirebaseToken, async (req, res) => {
   try {
     const db = GET_DB();
     const senderId = req.user._id;
-    const { receiverId, text } = req.body;
+    const { receiverId, text, imageUrl } = req.body;
 
-    if (!receiverId || !text) return res.status(400).json({ message: 'Thiếu dữ liệu' });
+    if (!receiverId || (!text && !imageUrl))
+      return res.status(400).json({ message: 'Thiếu dữ liệu' });
 
     const newMessage = {
       senderId,
       receiverId,
-      text,
+      text: text || '',
+      imageUrl: imageUrl || '',  // thêm imageUrl
       createdAt: new Date(),
       read: false
     };
 
     const result = await db.collection('messages').insertOne(newMessage);
-    newMessage._id = result.insertedId.toString(); // convert ObjectId sang string
+    newMessage._id = result.insertedId.toString();
 
     res.status(201).json({ message: 'Đã lưu tin nhắn', data: newMessage });
   } catch (err) {
     console.error('❌ Lỗi lưu tin nhắn:', err);
     res.status(500).json({ message: 'Server error' });
   }
-});
+})
+
 
 export const messagesRoute = router

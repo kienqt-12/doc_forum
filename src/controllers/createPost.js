@@ -2,6 +2,7 @@ import { UserModel } from '~/models/user'
 import { PostModel } from '~/models/postModel'
 import { NotificationModel } from '~/models/notification'
 import { ObjectId } from 'mongodb'
+import { DoctorModel } from '~/models/doctorModel'
 
 export const postController = {
   async createPost(req, res) {
@@ -14,9 +15,18 @@ export const postController = {
       };
 
       // 1. Tạo bài viết mới
-      const result = await PostModel.createNew(postData);
-      const postId = result.insertedId;
+      const result = await PostModel.createNew(postData)
+      const postId = result.insertedId
 
+      if (req.body.doctor) {
+        await DoctorModel.createOrUpdate({
+          doctor: req.body.doctor,
+          workplace: req.body.workplace,
+          city: req.body.city,
+          rating: req.body.rating,
+          tags: req.body.tags
+        })
+      }
       // 2. Lấy danh sách bạn bè của người dùng
       const friends = await UserModel.getFriends(_id);
 
@@ -108,17 +118,18 @@ export const postController = {
   async addComment(req, res) {
     try {
       const { postId } = req.params
-      const { content } = req.body
+      const { content, imageUrl } = req.body
       const { _id, name, avatar } = req.user
 
-      if (!content || !content.trim()) {
-        return res.status(400).json({ message: 'Nội dung không được để trống' })
+      if (!content && !imageUrl) {
+        return res.status(400).json({ message: 'Bình luận không được để trống' });
       }
 
       const commentData = {
         user: { _id, name, avatar },
-        content
-      }
+        content: content || '',
+        imageUrl: imageUrl || ''
+      };
 
       const newComment = await PostModel.addComment(postId, commentData)
 
@@ -128,6 +139,7 @@ export const postController = {
       return res.status(500).json({ message: error.message })
     }
   },
+
   async replyComment(req, res) {
     try {
       const { postId, commentId } = req.params;
@@ -165,6 +177,5 @@ export const postController = {
       console.error('❌ Lỗi khi lấy chi tiết bài viết:', error);
       return res.status(500).json({ message: error.message });
     }
-  }
-
+  },
 }

@@ -7,7 +7,7 @@ import { friendRouter } from './friendRouters.js'
 import { notiRouter } from './notificationRouters.js'
 import { topRankRouter } from './topRankRouters.js'
 import { messagesRoute } from './messageRouters.js'
-
+import { doctorRoutes } from './doctorRouters.js'
 const router = express.Router()
 
 router.get('/status', (req, res) => {
@@ -23,5 +23,6 @@ router.use('/friends', friendRouter)
 router.use('/notifications', notiRouter)
 router.use('/ranking', topRankRouter )
 router.use('/messages', messagesRoute)
+router.use('/doctors', doctorRoutes)
 
 export const APIs_v1 = router

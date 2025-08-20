@@ -30,32 +30,28 @@ export const initSockets = (io) => {
   });
 
   io.on('connection', (socket) => {
-    console.log('✅ User connected:', socket.user.email);
 
     // Join room
     socket.on('joinRoom', ({ friendId }) => {
       if (!friendId) return;
-      const roomName = [socket.user._id, friendId].sort().join('_');
+      const roomName = [socket.user._id, friendId].sort().join('_')
       socket.join(roomName);
-      console.log(`${socket.user.email} joined room ${roomName}`);
-    });
+    })
 
     // Leave room
     socket.on('leaveRoom', ({ friendId }) => {
       if (!friendId) return;
-      const roomName = [socket.user._id, friendId].sort().join('_');
+      const roomName = [socket.user._id, friendId].sort().join('_')
       socket.leave(roomName);
-      console.log(`${socket.user.email} left room ${roomName}`);
-    });
+    })
 
     // Chỉ broadcast message tới room, không insert DB
     socket.on('sendMessage', (msg) => {
       const roomName = [socket.user._id, msg.receiverId].sort().join('_');
       io.to(roomName).emit('receiveMessage', msg);
-    });
+    })
 
     socket.on('disconnect', () => {
-      console.log('⚡ User disconnected:', socket.user.email);
-    });
-  });
-};
+    })
+  })
+}
