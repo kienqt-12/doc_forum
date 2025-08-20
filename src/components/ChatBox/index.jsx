@@ -2,9 +2,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Box, Typography, Avatar, TextField, IconButton, Paper } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
+import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 import io from 'socket.io-client';
 import { format } from 'date-fns';
 import { useAuth } from '~/context/AuthContext';
+import { uploadImageToCloudinary } from '~/utils/uploadImage'; 
+import { Dialog } from '@mui/material';
 
 const SOCKET_URL = 'http://localhost:8017';
 
@@ -13,9 +17,11 @@ function ChatBox({ friend, onClose }) {
   const currentUserId = user?._id; 
   const currentUserAvatar = user?.avatar;
   const token = localStorage.getItem('accessToken');
-
+  const [openImage, setOpenImage] = useState(false);
+  const [previewSrc, setPreviewSrc] = useState('');
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
+  const [selectedImage, setSelectedImage] = useState(null);
   const socketRef = useRef();
   const messagesEndRef = useRef();
 
@@ -24,7 +30,7 @@ function ChatBox({ friend, onClose }) {
   };
   useEffect(scrollToBottom, [messages]);
 
-  // Kết nối Socket
+  // Socket
   useEffect(() => {
     if (!currentUserId || !token || !friend?._id) return;
 
@@ -35,7 +41,6 @@ function ChatBox({ friend, onClose }) {
       socketRef.current.emit('joinRoom', { friendId: friend._id });
     });
 
-    // Chỉ nhận message từ người khác
     socketRef.current.on('receiveMessage', (msg) => {
       if (msg.senderId !== currentUserId) {
         setMessages(prev => [
@@ -53,7 +58,7 @@ function ChatBox({ friend, onClose }) {
     };
   }, [friend, currentUserId, token]);
 
-  // Fetch lịch sử chat
+  // Fetch messages
   useEffect(() => {
     if (!friend?._id || !token) return;
 
@@ -80,52 +85,64 @@ function ChatBox({ friend, onClose }) {
     fetchMessages();
   }, [friend, token]);
 
-  // Gửi tin nhắn (POST API + broadcast socket)
   const handleSend = async () => {
-  if (!text.trim()) return;
+    if (!text.trim() && !selectedImage) return;
 
-  const msgPayload = {
-    receiverId: friend._id,
-    text
-  };
+    let imageUrl = '';
+    try {
+      if (selectedImage) {
+        imageUrl = await uploadImageToCloudinary(selectedImage); // upload ảnh trước
+      }
 
-  try {
-    // 1️⃣ Gọi API lưu tin nhắn
-    const res = await fetch('http://localhost:8017/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify(msgPayload)
-    });
+      const msgPayload = {
+        receiverId: friend._id,
+        text: text.trim(),
+        imageUrl
+      };
 
-    if (!res.ok) throw new Error('Lưu tin nhắn thất bại');
-    const data = await res.json();
+      // 1️⃣ Gọi API lưu tin nhắn
+      const res = await fetch('http://localhost:8017/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(msgPayload)
+      });
 
-    // 2️⃣ Thêm tin nhắn vào local state
-    const formattedMsg = {
-      ...data.data,
-      senderId: String(data.data.senderId),
-      receiverId: String(data.data.receiverId)
-    };
-    setMessages(prev => [...prev, formattedMsg]);
+      if (!res.ok) throw new Error('Lưu tin nhắn thất bại');
+      const data = await res.json();
 
-    // 3️⃣ Emit socket chỉ sau khi lưu thành công
-    if (socketRef.current && socketRef.current.connected) {
-      socketRef.current.emit('sendMessage', formattedMsg);
+      // 2️⃣ Thêm tin nhắn vào local state
+      const formattedMsg = {
+        ...data.data,
+        senderId: String(data.data.senderId),
+        receiverId: String(data.data.receiverId)
+      };
+      setMessages(prev => [...prev, formattedMsg]);
+
+      // 3️⃣ Emit socket
+      if (socketRef.current && socketRef.current.connected) {
+        socketRef.current.emit('sendMessage', formattedMsg);
+      }
+
+      setText('');
+      setSelectedImage(null); // reset ảnh sau khi gửi
+    } catch (err) {
+      console.error(err);
     }
-
-    setText('');
-  } catch (err) {
-    console.error(err);
-  }
-};
-
+  };
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') handleSend();
   };
+
+  const handleImageClick = (src) => {
+    setPreviewSrc(src);
+    setOpenImage(true);
+  };
+
+  const handleCloseImage = () => setOpenImage(false);
 
   return (
     <Paper
@@ -169,7 +186,15 @@ function ChatBox({ friend, onClose }) {
               {!isMine && <Avatar src={friend.avatar} sx={{ width: 24, height: 24, mr: 1 }} />}
               {isMine && <Avatar src={currentUserAvatar} sx={{ width: 24, height: 24, ml: 1 }} />}
               <Box sx={{ bgcolor: isMine ? '#9C27B0' : '#E1BEE7', color: isMine ? '#fff' : '#000', p: 1.2, borderRadius: 2, maxWidth: '75%', wordBreak: 'break-word' }}>
-                <Typography variant="body2">{msg.text}</Typography>
+                {msg.text && <Typography variant="body2">{msg.text}</Typography>}
+                {msg.imageUrl && (
+                  <img 
+                    src={msg.imageUrl} 
+                    alt="attachment" 
+                    style={{ maxWidth: 100, maxHeight: 100, marginTop: 4, borderRadius: 6 }} 
+                    onClick={() => handleImageClick(msg.imageUrl)}
+                  />
+                )}
                 <Typography variant="caption" sx={{ display: 'block', textAlign: 'right', mt: 0.5 }}>
                   {format(new Date(msg.createdAt), 'HH:mm')}
                 </Typography>
@@ -178,10 +203,45 @@ function ChatBox({ friend, onClose }) {
           );
         })}
         <div ref={messagesEndRef} />
+        <Dialog open={openImage} onClose={handleCloseImage} maxWidth="lg">
+          <img src={previewSrc} alt="full" style={{ width: '100%', height: 'auto' }} />
+        </Dialog>
       </Box>
 
-      {/* Input */}
-      <Box sx={{ display: 'flex', p: 1, bgcolor: '#fff' }}>
+      {/* Input + Image Preview */}
+      {selectedImage && (
+        <Box sx={{ p: 1, display: "flex", alignItems: "center", gap: 1, bgcolor: "#f5f5f5", borderRadius: 1, mx: 1, mb: 1 }}>
+          <img
+            src={URL.createObjectURL(selectedImage)}
+            alt="preview"
+            style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8 }}
+          />
+          <IconButton onClick={() => setSelectedImage(null)} size="small">
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      )}
+
+      <Box sx={{ display: 'flex', p: 1, bgcolor: '#fff', alignItems: "center" }}>
+        {/* Nút chọn ảnh */}
+        <input
+          type="file"
+          accept="image/*"
+          hidden
+          id="chat-image-input"
+          onChange={(e) => {
+            if (e.target.files[0]) {
+              setSelectedImage(e.target.files[0]);
+            }
+          }}
+        />
+        <label htmlFor="chat-image-input">
+          <IconButton component="span">
+            <AddIcon />
+          </IconButton>
+        </label>
+
+        {/* Nhập text */}
         <TextField
           variant="outlined"
           size="small"
@@ -190,8 +250,11 @@ function ChatBox({ friend, onClose }) {
           onChange={e => setText(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Nhập tin nhắn..."
+          sx={{ mx: 1 }}
         />
-        <IconButton color="primary" onClick={handleSend}>
+
+        {/* Nút gửi */}
+        <IconButton color="#9C27B0" onClick={handleSend}>
           <SendIcon />
         </IconButton>
       </Box>

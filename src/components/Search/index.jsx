@@ -2,6 +2,7 @@ import { styled, alpha } from '@mui/material/styles';
 import InputBase from '@mui/material/InputBase';
 import Box from '@mui/material/Box';
 import SearchIcon from '@mui/icons-material/Search';
+import { useState } from 'react';
 
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
@@ -33,7 +34,6 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
   width: '100%',
   '& .MuiInputBase-input': {
     padding: theme.spacing(1, 1, 1, 0),
-    // vertical padding + font size from searchIcon
     paddingLeft: `calc(1em + ${theme.spacing(4)})`,
     transition: theme.transitions.create('width'),
     [theme.breakpoints.up('sm')]: {
@@ -45,20 +45,30 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
   },
 }));
 
-function SearchApp () {
-  return(
-        <Box sx={{ flexGrow: 2, display: 'flex', justifyContent: 'center' }}>
-          <Search sx={{color:'#fff'}}>
-            <SearchIconWrapper>
-              <SearchIcon />
-            </SearchIconWrapper>
-            <StyledInputBase
-              placeholder="Tìm kiếm ..."
-              inputProps={{ 'aria-label': 'search' }}
-            />
-          </Search>
-        </Box>
-  )
+function SearchApp({ onSearch }) {
+  const [inputValue, setInputValue] = useState('');
+
+  const handleChange = (e) => {
+    const value = e.target.value;
+    setInputValue(value);
+    if (onSearch) onSearch(value); // Trả giá trị ra parent
+  };
+
+  return (
+    <Box sx={{ flexGrow: 2, display: 'flex', justifyContent: 'center' }}>
+      <Search sx={{ color: '#fff' }}>
+        <SearchIconWrapper>
+          <SearchIcon />
+        </SearchIconWrapper>
+        <StyledInputBase
+          placeholder="Tìm kiếm ..."
+          inputProps={{ 'aria-label': 'search' }}
+          value={inputValue}
+          onChange={handleChange} // Gọi khi input thay đổi
+        />
+      </Search>
+    </Box>
+  );
 }
 
-export default SearchApp
+export default SearchApp;

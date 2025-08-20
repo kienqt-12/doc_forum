@@ -16,7 +16,7 @@ import {
   TextField,
   Button,
   Chip,
-  Grid,
+  Grid,  
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -30,10 +30,13 @@ import {
   LocationOn,
   Reply as ReplyIcon,
 } from '@mui/icons-material';
+import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
+import { uploadImageToCloudinary } from '~/utils/uploadImage'; 
 
 const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [commentText, setCommentText] = useState('');
+  const [commentImage, setCommentImage] = useState(null);
   const [likes, setLikes] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
   const [comments, setComments] = useState([]);
@@ -114,21 +117,34 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
       return;
     }
 
-    if (!commentText.trim()) {
-      toast.error('Nội dung bình luận không được để trống');
+    if (!commentText.trim() && !commentImage) {
+      toast.error('Bình luận không được để trống');
       return;
     }
 
     try {
+      let imageUrl = "";
+
+      // Nếu có ảnh thì upload lên Cloudinary trước
+      if (commentImage) {
+        imageUrl = await uploadImageToCloudinary(commentImage);
+      }
+
+      // Gửi comment sang backend
       await axiosClient.post(`/posts/${post._id}/comment`, {
         content: commentText.trim(),
+        imageUrl
       });
 
+      // Load lại post để cập nhật comments
       const updated = await axiosClient.get(`/posts/${post._id}`);
-      const safeComments = Array.isArray(updated.data.comments) ? updated.data.comments.filter(c => c && c._id) : [];
+      const safeComments = Array.isArray(updated.data.comments)
+        ? updated.data.comments.filter(c => c && c._id)
+        : [];
 
       setComments(safeComments);
       setCommentText('');
+      setCommentImage(null);
 
       if (onUpdatePost) {
         const updatedPost = { ...post, ...updated.data };
@@ -506,15 +522,65 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
               placeholder="Viết bình luận của bạn..."
-              sx={{
-                mb: 2,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '8px',
-                  '& fieldset': { borderColor: '#BC3AAA' },
-                  '&:hover fieldset': { borderColor: '#BC3AAA' },
-                },
-              }}
+              sx={{ mb: 2 }}
             />
+
+{/* Nút chọn ảnh (ẩn input) */}
+{/* Nút chọn ảnh */}
+<IconButton
+  component="label"
+  sx={{
+    bgcolor: "#f0f2f5",
+    borderRadius: "8px",
+    p: 1,
+    "&:hover": { bgcolor: "#e4e6eb" },
+  }}
+>
+  <AddPhotoAlternateIcon sx={{ color: "#65676b" }} />
+  <input
+    type="file"
+    accept="image/*"
+    hidden
+    onChange={(e) => setCommentImage(e.target.files[0])}
+  />
+</IconButton>
+
+{/* Preview ảnh nếu có */}
+{commentImage && (
+  <Box
+    sx={{
+      mt: 1.5,
+      position: "relative",
+      display: "inline-block",
+      maxWidth: 200,
+    }}
+  >
+    <img
+      src={URL.createObjectURL(commentImage)}
+      alt="Preview"
+      style={{
+        width: "100%",
+        borderRadius: "8px",
+        objectFit: "cover",
+      }}
+    />
+    {/* Nút xóa ảnh */}
+    <IconButton
+      size="small"
+      onClick={() => setCommentImage(null)}
+      sx={{
+        position: "absolute",
+        top: 4,
+        right: 4,
+        bgcolor: "rgba(0,0,0,0.6)",
+        color: "#fff",
+        "&:hover": { bgcolor: "rgba(0,0,0,0.8)" },
+      }}
+    >
+      ✕
+    </IconButton>
+  </Box>
+)}
             <Button
               variant="contained"
               onClick={handleCommentSubmit}
@@ -604,6 +670,26 @@ const PostDetailModal = ({ open, onClose, post, onUpdatePost }) => {
                       >
                         {comment.content}
                       </Typography>
+                      {comment.imageUrl && (
+                        <Box sx={{ mt: 1, maxWidth: "70%" }}>
+                          <img
+                            src={comment.imageUrl}
+                            alt="Ảnh bình luận"
+                            style={{
+                              width: "30%",
+                              height: "auto",
+                              borderRadius: "12px",
+                              objectFit: "cover",
+                              boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                              transition: "transform 0.2s ease-in-out",
+                              cursor: "pointer",
+                            }}
+                            onClick={() => window.open(comment.imageUrl, "_blank")} // click mở ảnh gốc
+                            onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.02)")}
+                            onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                          />
+                        </Box>
+                      )}
                       <Button
                         size="small"
                         startIcon={<ReplyIcon />}

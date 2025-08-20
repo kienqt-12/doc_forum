@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Card, CardContent, Typography, Avatar,
-  IconButton, Rating, Divider, Stack, TextField, Button, Menu, MenuItem,Grid  
+  IconButton, Rating, Divider, Stack, TextField, Button, Menu, MenuItem,Grid,Chip
 } from '@mui/material';
 import {
   Favorite, FavoriteBorder, Share, Comment, Visibility, MoreVert,
@@ -155,41 +155,6 @@ function PostList({ userId }) {
     }, 100);
   };
 
-  const handleCommentSubmit = async (postId) => {
-    if (!commentText[postId]?.trim()) {
-      toast.error('Nội dung bình luận không được để trống');
-      return;
-    }
-
-    try {
-      await axiosClient.post(`/posts/${postId}/comment`, {
-        content: commentText[postId].trim(),
-      });
-
-      const updated = await axiosClient.get(`/posts/${postId}`);
-      const updatedPost = {
-        ...posts.find((p) => p.id === postId),
-        ...updated.data,
-        comments: updated.data.comments?.length || 0,
-        likesCount: updated.data.likes?.length || 0,
-        isLiked: updated.data.likes?.includes(user._id)
-      };
-
-      setPosts((prev) => prev.map((p) => (p.id === postId ? updatedPost : p)));
-
-      setCommentText((prev) => ({ ...prev, [postId]: '' }));
-      setShowCommentForm((prev) => ({ ...prev, [postId]: false }));
-
-      if (selectedPost?.id === postId) {
-        setSelectedPost(updatedPost);
-      }
-
-      toast.success('Bình luận đã được gửi!');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Lỗi khi gửi bình luận');
-    }
-  };
-
   const handleUpdatePost = (updatedPost) => {
     setPosts((prev) =>
       prev.map((p) =>
@@ -234,7 +199,6 @@ function PostList({ userId }) {
       {posts.map((post) => {
         const isOwnPost = user?._id === post.author?._id;
         const anchorEl = anchorEls[post.id] || null;
-
         return (
           <Card
             key={post.id}

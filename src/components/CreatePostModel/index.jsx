@@ -27,6 +27,7 @@ const CreatePostModal = ({ open, onClose, onSubmit }) => {
 
   const [imageFile, setImageFile] = useState(null);
   const [previewMode, setPreviewMode] = useState(false);
+  const [tagInput, setTagInput] = useState(""); // 👈 thêm state cho input tag
 
   const handleChange = (field) => (e) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -37,13 +38,13 @@ const CreatePostModal = ({ open, onClose, onSubmit }) => {
   };
 
   const handleTagKeyDown = (e) => {
-    if (e.key === 'Enter' || e.key === ',') {
+    if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
-      const newTag = e.target.value.trim().replace(/^#*/, '');
+      const newTag = tagInput.trim().replace(/^#*/, "");
       if (newTag && !form.tags.includes(newTag)) {
         setForm((prev) => ({ ...prev, tags: [...prev.tags, newTag] }));
       }
-      e.target.value = '';
+      setTagInput(""); // reset input sau khi add
     }
   };
 
@@ -68,7 +69,7 @@ const CreatePostModal = ({ open, onClose, onSubmit }) => {
 
       let imageUrl = '';
       if (imageFile) {
-        imageUrl = await uploadImageToCloudinary(imageFile); // ✅ Upload ảnh lên Cloudinary
+        imageUrl = await uploadImageToCloudinary(imageFile);
       }
 
       const postData = {
@@ -103,6 +104,7 @@ const CreatePostModal = ({ open, onClose, onSubmit }) => {
       });
       setImageFile(null);
       setPreviewMode(false);
+      setTagInput(""); // reset tag input
       onClose();
     } catch (err) {
       console.error('❌ Lỗi khi tạo bài viết:', err);
@@ -123,11 +125,27 @@ const CreatePostModal = ({ open, onClose, onSubmit }) => {
           <>
             <Typography variant="h6">{form.title}</Typography>
             {imageFile && (
-              <Box mt={2}>
+              <Box
+                sx={{
+                  width: '100%',
+                  maxWidth: 700,
+                  height: { xs: 250, sm: 350 },
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  mx: 'auto',
+                  mt: 2
+                }}
+              >
                 <img
                   src={URL.createObjectURL(imageFile)}
                   alt="preview"
-                  style={{ width: '100%', borderRadius: 10 }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    display: 'block',
+                  }}
                 />
               </Box>
             )}
@@ -165,8 +183,16 @@ const CreatePostModal = ({ open, onClose, onSubmit }) => {
               <Rating value={form.rating} onChange={handleRatingChange} precision={0.5} />
             </Box>
 
+            {/* 👇 Fix phần nhập tag */}
             <Box>
-              <TextField label="Hashtag" placeholder="Nhấn Enter để thêm" onKeyDown={handleTagKeyDown} fullWidth />
+              <TextField
+                label="Hashtag"
+                placeholder="Nhấn Enter để thêm"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleTagKeyDown}
+                fullWidth
+              />
               <Box mt={1}>
                 {form.tags.map((tag, idx) => (
                   <Chip

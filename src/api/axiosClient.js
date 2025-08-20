@@ -8,9 +8,10 @@ const axiosClient = axios.create({
   }
 });
 
+// Interceptor để tự động thêm token trước khi gửi request
 axiosClient.interceptors.request.use(
   async (config) => {
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem('accessToken'); // Lấy token từ localStorage
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
