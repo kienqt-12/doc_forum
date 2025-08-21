@@ -113,7 +113,8 @@ export const PostModel = {
         name: replyData.user.name,
         avatar: replyData.user.avatar
       },
-      content: replyData.content,
+      content: replyData.content || '',
+      imageUrl: replyData.imageUrl || '',   // ✅ thêm dòng này
       createdAt: new Date()
     }
 
@@ -261,5 +262,21 @@ export const PostModel = {
 
     return result
   },
+  async deleteById(postId, userId) {
+    const db = GET_DB()
 
+    // tìm bài viết
+    const post = await db.collection(POST_COLLECTION_NAME).findOne({ _id: new ObjectId(postId) })
+    if (!post) {
+      throw new Error('Bài viết không tồn tại')
+    }
+
+    // kiểm tra quyền xoá (chỉ chủ bài viết mới được xoá)
+    if (post.author._id.toString() !== userId) {
+      throw new Error('Bạn không có quyền xoá bài viết này')
+    }
+
+    const result = await db.collection(POST_COLLECTION_NAME).deleteOne({ _id: new ObjectId(postId) })
+    return result.deletedCount > 0
+  }
 }

@@ -7,6 +7,7 @@ const router = express.Router()
 router.post('/', verifyFirebaseToken, postController.createPost)
 router.get('/', postController.getAllPosts)
 router.get('/:postId', postController.getPostById)
+router.delete('/:postId', verifyFirebaseToken, postController.deletePost)
 
 router.get('/user/:userId', postController.getPostsByUser)
 router.post('/:postId/like', verifyFirebaseToken, postController.likePost)

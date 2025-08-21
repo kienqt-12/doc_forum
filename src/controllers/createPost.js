@@ -142,18 +142,19 @@ export const postController = {
 
   async replyComment(req, res) {
     try {
-      const { postId, commentId } = req.params;
-      const { content } = req.body;
-      const { _id, name, avatar } = req.user;
+      const { postId, commentId } = req.params
+      const { content, imageUrl } = req.body
+      const { _id, name, avatar } = req.user
 
-      if (!content || !content.trim()) {
-        return res.status(400).json({ message: 'Nội dung không được để trống' });
+      if (!content && !imageUrl) {
+        return res.status(400).json({ message: 'Nội dung hoặc ảnh không được để trống' })
       }
 
       const replyData = {
         user: { _id, name, avatar },
-        content
-      };
+        content: content || '',
+        imageUrl: imageUrl || ''
+      }
 
       const newReply = await PostModel.addReply(postId, commentId, replyData);
 
@@ -163,6 +164,7 @@ export const postController = {
       return res.status(500).json({ message: error.message });
     }
   },
+
   async getPostById(req, res) {
     try {
       const { postId } = req.params;
@@ -178,4 +180,27 @@ export const postController = {
       return res.status(500).json({ message: error.message });
     }
   },
+  async deletePost(req, res) {
+    try {
+      const { postId } = req.params
+      const userId = req.user._id  // lấy từ verifyFirebaseToken
+
+      const deleted = await PostModel.deleteById(postId, userId)
+
+      if (!deleted) {
+        return res.status(400).json({ message: 'Không thể xoá bài viết' })
+      }
+
+      return res.status(200).json({ message: 'Xoá bài viết thành công' })
+    } catch (error) {
+      if (error.message === 'NOT_FOUND') {
+        return res.status(404).json({ message: 'Bài viết không tồn tại' })
+      }
+      if (error.message === 'FORBIDDEN') {
+        return res.status(403).json({ message: 'Bạn không có quyền xoá bài viết này' })
+      }
+      console.error('❌ Lỗi khi xoá bài viết:', error)
+      return res.status(500).json({ message: error.message })
+    }
+  }
 }
