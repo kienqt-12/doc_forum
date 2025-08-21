@@ -88,14 +88,19 @@ const TopRankedSection = () => {
       setLoadingDoctorPosts(false)
     }
   }
-  const handleCardClick = (post) => {
-
-    setSelectedPost({ ...post, currentUserId: user._id });
-  };
 
   const handleAvatarClick = (event, user) => {
     event.stopPropagation();
     goToProfile(user._id);
+  };
+
+  const handleOpenPost = async (post) => {
+    try {
+      const res = await axiosClient.get(`/posts/${post._id}`);
+      setSelectedPost({ ...res.data, currentUserId: user._id });
+    } catch (err) {
+      console.error("❌ Lỗi khi load chi tiết post:", err);
+    }
   };
 
   const handleUpdatePost = (updatedPost) => {
@@ -129,7 +134,7 @@ const TopRankedSection = () => {
           .filter(p => p.likes !== 0)
           .sort((a, b) => b.likes - a.likes)
           .map(post => (
-            <Stack key={post._id} direction="row" alignItems="center" spacing={2} onClick={() => handleCardClick(post)} sx={{ p:2, borderRadius:2, bgcolor:LIGHT_PINK, '&:hover':{bgcolor:LIGHTER_PINK}, transition:'0.2s ease' }}>
+            <Stack key={post._id} direction="row" alignItems="center" spacing={2} onClick={() => handleOpenPost(post)} sx={{ p:2, borderRadius:2, bgcolor:LIGHT_PINK, '&:hover':{bgcolor:LIGHTER_PINK}, transition:'0.2s ease' }}>
               <Avatar src={post.avatar} />
               <Box flex={1}>
                 <Typography fontWeight={600}>{post.title}</Typography>
@@ -163,10 +168,6 @@ const TopRankedSection = () => {
               </Box>
             </Stack>
           ));
-          <DoctorDialog 
-            open={openDialog} 
-            onClose={() => setOpenDialog(false)} 
-          />
       case 2:
         return data.users.filter(u=>u.postCount!==0).map(user=>(
           <Stack key={user._id} direction="row" alignItems="center" spacing={2} onClick={(e) => handleAvatarClick(e, user)} sx={{p:2, borderRadius:2, bgcolor:LIGHT_PINK, '&:hover':{bgcolor:LIGHTER_PINK}}}>
@@ -201,13 +202,13 @@ const TopRankedSection = () => {
         />
         )}
       {selectedPost && (
-            <PostDetailModal
-              open={Boolean(selectedPost)}
-              onClose={() => setSelectedPost(null)}
-              post={selectedPost}
-              onUpdatePost={handleUpdatePost}
-            />
-          )}
+        <PostDetailModal
+          open={Boolean(selectedPost)}
+          onClose={() => setSelectedPost(null)}
+          post={selectedPost}
+          onUpdatePost={handleUpdatePost}
+        />
+      )}
     </Box>
   )
 }
