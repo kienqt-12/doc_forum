@@ -5,8 +5,10 @@ import AppFilter from "~/components/AppFilter"
 import PostList from "../../components/PostsList"
 import AutoSlider from "~/components/AutoSlider"
 import TopRankedSection from "~/components/TopLiked"
+import React, { useState, useEffect, useRef } from 'react';
 
 function Board() {
+  const [filters, setFilters] = useState(null);
   return (
     <Container
       disableGutters
@@ -45,7 +47,7 @@ function Board() {
         >
           {/* AppFilter không cuộn */}
           <Box sx={{ mb: 1, flexShrink: 0 }}>
-            <AppFilter />
+            <AppFilter onSearch={setFilters} />  {/* ✅ nhận dữ liệu filter */}
           </Box>
 
           {/* Cuộn bài viết */}
@@ -59,7 +61,7 @@ function Board() {
               }
             }}
           >
-            <PostList />
+            <PostList filters={filters} />       {/* ✅ truyền filter xuống */}
           </Box>
         </Box>
 

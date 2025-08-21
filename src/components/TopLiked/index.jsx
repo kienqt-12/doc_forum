@@ -18,6 +18,9 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents'
 import PeopleAltIcon from '@mui/icons-material/PeopleAlt'
 import axiosClient from '~/api/axiosClient'
 import DoctorDialog from '../DoctorPost'
+import { useAuth } from '../../context/AuthContext'
+import PostDetailModal from '~/components/PostDetail'
+import useNavigation from '../../hooks/useNavigation';
 
 const PRIMARY_COLOR = '#FE5E7E'
 const LIGHT_PINK = '#FFF5F8'
@@ -35,7 +38,9 @@ const TopRankedSection = () => {
   const [tabIndex, setTabIndex] = useState(0)
   const [data, setData] = useState({ posts: [], doctors: [], users: [] })
   const [loading, setLoading] = useState(true)
-
+  const [selectedPost, setSelectedPost] = useState(null);
+  const { user } = useAuth();
+  const { goToProfile } = useNavigation();
   // state bác sĩ
   const [selectedDoctor, setSelectedDoctor] = useState(null)
   const [doctorPosts, setDoctorPosts] = useState([])
@@ -83,6 +88,37 @@ const TopRankedSection = () => {
       setLoadingDoctorPosts(false)
     }
   }
+  const handleCardClick = (post) => {
+
+    setSelectedPost({ ...post, currentUserId: user._id });
+  };
+
+  const handleAvatarClick = (event, user) => {
+    event.stopPropagation();
+    goToProfile(user._id);
+  };
+
+  const handleUpdatePost = (updatedPost) => {
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === updatedPost._id
+          ? {
+              ...p,
+              ...updatedPost,
+              comments: updatedPost.comments?.length || 0,
+              likesCount: updatedPost.likes?.length || 0,
+              isLiked: updatedPost.likes?.includes(user._id)
+            }
+          : p
+      )
+    );
+
+    setSelectedPost((prev) =>
+      prev?._id === updatedPost._id
+        ? { ...updatedPost, currentUserId: user._id }
+        : prev
+    );
+  };
 
   const renderList = () => {
     if (loading) return <Typography align="center">Đang tải...</Typography>
@@ -93,7 +129,7 @@ const TopRankedSection = () => {
           .filter(p => p.likes !== 0)
           .sort((a, b) => b.likes - a.likes)
           .map(post => (
-            <Stack key={post._id} direction="row" alignItems="center" spacing={2} sx={{ p:2, borderRadius:2, bgcolor:LIGHT_PINK, '&:hover':{bgcolor:LIGHTER_PINK}, transition:'0.2s ease' }}>
+            <Stack key={post._id} direction="row" alignItems="center" spacing={2} onClick={() => handleCardClick(post)} sx={{ p:2, borderRadius:2, bgcolor:LIGHT_PINK, '&:hover':{bgcolor:LIGHTER_PINK}, transition:'0.2s ease' }}>
               <Avatar src={post.avatar} />
               <Box flex={1}>
                 <Typography fontWeight={600}>{post.title}</Typography>
@@ -133,7 +169,7 @@ const TopRankedSection = () => {
           />
       case 2:
         return data.users.filter(u=>u.postCount!==0).map(user=>(
-          <Stack key={user._id} direction="row" alignItems="center" spacing={2} sx={{p:2, borderRadius:2, bgcolor:LIGHT_PINK, '&:hover':{bgcolor:LIGHTER_PINK}}}>
+          <Stack key={user._id} direction="row" alignItems="center" spacing={2} onClick={(e) => handleAvatarClick(e, user)} sx={{p:2, borderRadius:2, bgcolor:LIGHT_PINK, '&:hover':{bgcolor:LIGHTER_PINK}}}>
             <Avatar src={user.avatar} />
             <Box flex={1}>
               <Typography fontWeight={600}>{user.name}</Typography>
@@ -156,29 +192,22 @@ const TopRankedSection = () => {
       </Tabs>
       <Divider sx={{my:2}} />
       <Stack spacing={2}>{renderList()}</Stack>
-{/* Dialog hiển thị bài viết bác sĩ */}
-{selectedDoctor && (
-  <DoctorDialog 
-    open={openDialog} 
-    onClose={() => setOpenDialog(false)} 
-    doctor={selectedDoctor} 
-  />
-  )}
-      {/* <Dialog open={openDialog} onClose={()=>setOpenDialog(false)} fullWidth maxWidth="sm">
-        <DialogTitle>{selectedDoctor?.doctor}</DialogTitle>
-        <DialogContent>
-          {loadingDoctorPosts ? (
-            <Box display="flex" justifyContent="center" py={3}><CircularProgress /></Box>
-          ) : doctorPosts.length === 0 ? (
-            <Typography>Chưa có bài viết nào.</Typography>
-          ) : doctorPosts.map(post => (
-            <Box key={post._id} mb={2} p={2} borderRadius={2} bgcolor={LIGHT_PINK}>
-              <Typography fontWeight={600}>{post.title}</Typography>
-              <Typography variant="caption" color="text.secondary">{post.author.name || post.author}</Typography>
-            </Box>
-          ))}
-        </DialogContent>
-      </Dialog> */}
+      {/* Dialog hiển thị bài viết bác sĩ */}
+      {selectedDoctor && (
+        <DoctorDialog 
+          open={openDialog} 
+          onClose={() => setOpenDialog(false)} 
+          doctor={selectedDoctor} 
+        />
+        )}
+      {selectedPost && (
+            <PostDetailModal
+              open={Boolean(selectedPost)}
+              onClose={() => setSelectedPost(null)}
+              post={selectedPost}
+              onUpdatePost={handleUpdatePost}
+            />
+          )}
     </Box>
   )
 }

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Button, Box, Rating, Typography, Divider,
-  Autocomplete, Chip
+  Autocomplete, Chip, FormControl, InputLabel , Select ,MenuItem, OutlinedInput 
 } from '@mui/material';
 import { getAuth } from 'firebase/auth';
 import { uploadImageToCloudinary } from '~/utils/uploadImage'; 
@@ -12,6 +12,80 @@ const CITIES = [
   'Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ',
   'Bình Dương', 'Đồng Nai', 'Nghệ An', 'Thanh Hóa', 'Thừa Thiên Huế',
 ];
+// 👇 thêm list chuyên khoa mặc định
+const SPECIALTIES = [
+  "Tim mạch",
+  "Nội tiết",
+  "Da liễu",
+  "Nhi khoa",
+  "Sản phụ khoa",
+  "Ngoại tổng quát",
+  "Tai mũi họng",
+  "Răng hàm mặt",
+  "Mắt",
+  "Tâm thần"
+];
+const WORKPLACES_BY_CITY = {
+  "Hà Nội": [
+    "Bệnh viện Bạch Mai",
+    "Bệnh viện Hữu nghị Việt Đức",
+    "Bệnh viện K",
+    "Bệnh viện Phụ sản Trung ương",
+    "Bệnh viện Quân y 108",
+    "Bệnh viện Đại học Y Hà Nội",
+    "Bệnh viện E Trung ương"
+  ],
+  "TP. Hồ Chí Minh": [
+    "Bệnh viện Chợ Rẫy",
+    "Bệnh viện Nhi Đồng 1",
+    "Bệnh viện Nhi Đồng 2",
+    "Bệnh viện Từ Dũ",
+    "Bệnh viện Nhân dân Gia Định",
+    "Bệnh viện 115"
+  ],
+  "Đà Nẵng": [
+    "Bệnh viện Đà Nẵng",
+    "Bệnh viện C Đà Nẵng",
+    "Bệnh viện Phụ sản - Nhi Đà Nẵng"
+  ],
+  "Hải Phòng": [
+    "Bệnh viện Hữu nghị Việt Tiệp",
+    "Bệnh viện Trẻ em Hải Phòng",
+    "Bệnh viện Phụ sản Hải Phòng"
+  ],
+  "Cần Thơ": [
+    "Bệnh viện Đa khoa Trung ương Cần Thơ",
+    "Bệnh viện Nhi đồng Cần Thơ",
+    "Bệnh viện Phụ sản Cần Thơ"
+  ],
+  "Bình Dương": [
+    "Bệnh viện Đa khoa tỉnh Bình Dương",
+    "Bệnh viện Quốc tế Becamex",
+    "Bệnh viện Hoàn Hảo"
+  ],
+  "Đồng Nai": [
+    "Bệnh viện Đa khoa Đồng Nai",
+    "Bệnh viện Nhi Đồng Nai",
+    "Bệnh viện Thống Nhất Đồng Nai"
+  ],
+  "Nghệ An": [
+    "Bệnh viện Hữu nghị Đa khoa Nghệ An",
+    "Bệnh viện Sản Nhi Nghệ An",
+    "Bệnh viện 115 Nghệ An"
+  ],
+  "Thanh Hóa": [
+    "Bệnh viện Đa khoa tỉnh Thanh Hóa",
+    "Bệnh viện Nhi Thanh Hóa",
+    "Bệnh viện Phụ sản Thanh Hóa"
+  ],
+  "Thừa Thiên Huế": [
+    "Bệnh viện Trung ương Huế",
+    "Bệnh viện Trường Đại học Y Dược Huế",
+    "Bệnh viện Quốc tế Huế"
+  ]
+};
+
+
 
 const CreatePostModal = ({ open, onClose, onSubmit }) => {
   const [form, setForm] = useState({
@@ -168,7 +242,16 @@ const CreatePostModal = ({ open, onClose, onSubmit }) => {
 
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
               <TextField label="Tên bác sĩ" fullWidth value={form.doctor} onChange={handleChange('doctor')} />
-              <TextField label="Nơi làm việc" fullWidth value={form.workplace} onChange={handleChange('workplace')} />
+              <Autocomplete
+                freeSolo
+                options={WORKPLACES_BY_CITY[form.city] || []}
+                value={form.workplace}
+                onChange={(_, value) => setForm(prev => ({ ...prev, workplace: value }))}
+                onInputChange={(_, value) => setForm(prev => ({ ...prev, workplace: value }))}
+                renderInput={(params) => (
+                  <TextField {...params} label="Nơi làm việc" />
+                )}
+              />
             </Box>
 
             <Autocomplete
@@ -184,27 +267,25 @@ const CreatePostModal = ({ open, onClose, onSubmit }) => {
             </Box>
 
             {/* 👇 Fix phần nhập tag */}
-            <Box>
-              <TextField
-                label="Hashtag"
-                placeholder="Nhấn Enter để thêm"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={handleTagKeyDown}
-                fullWidth
-              />
-              <Box mt={1}>
-                {form.tags.map((tag, idx) => (
-                  <Chip
-                    key={idx}
-                    label={`#${tag}`}
-                    onDelete={handleTagDelete(tag)}
-                    sx={{ mr: 1, mb: 1 }}
-                  />
+            <FormControl fullWidth>
+              <InputLabel>Chuyên khoa</InputLabel>
+              <Select
+                value={form.tags[0] || ""}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    tags: e.target.value ? [e.target.value] : []
+                  }))
+                }
+              >
+                <MenuItem value="">-- Chọn chuyên khoa --</MenuItem>
+                {SPECIALTIES.map((s, i) => (
+                  <MenuItem key={i} value={s}>
+                    {s}
+                  </MenuItem>
                 ))}
-              </Box>
-            </Box>
-
+              </Select>
+            </FormControl>
             <ImageUploader imageFile={imageFile} setImageFile={setImageFile} />
           </>
         )}

@@ -18,7 +18,7 @@ import EditPostModal from '../EditPost';
 import axiosClient from '../../api/axiosClient';
 import { toast } from 'react-toastify';
 
-function PostList({ userId }) {
+function PostList({ filters, userId}) {
   const [posts, setPosts] = useState([]);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
@@ -38,12 +38,34 @@ function PostList({ userId }) {
       if (!res.data) throw new Error('Lỗi lấy bài viết');
 
       let data = res.data;
+
+      // ✅ lọc theo userId (nếu có)
       if (userId) {
         data = data.filter((post) => post.author?._id === userId);
       }
 
-      const sorted = [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      // ✅ lọc theo filters
+      if (filters) {
+        if (filters.tags && filters.tags.length > 0) {
+          data = data.filter((p) => p.tags?.includes(filters.tags[0]));
+        }
+        if (filters.city && filters.city !== 'Tất cả') {
+          data = data.filter((p) => p.city === filters.city);
+        }
+        if (filters.workplace && filters.workplace !== 'Tất cả') {
+          data = data.filter((p) => p.workplace === filters.workplace);
+        }
+      }
 
+      // ✅ sort
+      let sorted = [...data];
+      if (filters?.sort === 'Cũ nhất') {
+        sorted.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      } else {
+        sorted.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      }
+
+      // ✅ map thêm field hiển thị
       const enhanced = sorted.map((post) => {
         const avatarFallback = 'https://via.placeholder.com/48';
         let image = post?.author?.avatar || avatarFallback;
@@ -87,7 +109,7 @@ function PostList({ userId }) {
     const handleNewPost = () => fetchPosts();
     window.addEventListener('postCreated', handleNewPost);
     return () => window.removeEventListener('postCreated', handleNewPost);
-  }, [user, userId]);
+  }, [user, userId, filters]); // ✅ thêm filters
 
   const handleCardClick = (post) => {
     if (!user) {
