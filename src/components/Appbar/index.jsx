@@ -18,7 +18,7 @@ import NotiDropdown from './NotiDropdown/notiDropdown';
 import FriendList from './Friendlist/friendlist';
 import ChatBox from '../ChatBox';
 
-function AppBar() {
+function AppBar({ onSearch }) {
   const { user, logout } = useAuth();
   const { goToLogin, goToProfile } = useNavigation();
 
@@ -69,7 +69,7 @@ function AppBar() {
         </Typography>
       </Box>
 
-      <SearchApp />
+      <SearchApp onSearch={onSearch} />
 
       <Box
         sx={{

@@ -9,6 +9,7 @@ import React, { useState, useEffect, useRef } from 'react';
 
 function Board() {
   const [filters, setFilters] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");  // search riêng
   return (
     <Container
       disableGutters
@@ -21,7 +22,7 @@ function Board() {
       }}
     >
       {/* Thanh AppBar trên cùng */}
-      <AppBar />
+      <AppBar onSearch={setSearchTerm} />
 
       {/* Nội dung dưới AppBar */}
       <Box
@@ -61,7 +62,7 @@ function Board() {
               }
             }}
           >
-            <PostList filters={filters} />       {/* ✅ truyền filter xuống */}
+            <PostList filters={filters} searchTerm={searchTerm} />       {/* ✅ truyền filter xuống */}
           </Box>
         </Box>
 

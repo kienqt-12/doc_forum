@@ -18,7 +18,7 @@ import EditPostModal from '../EditPost';
 import axiosClient from '../../api/axiosClient';
 import { toast } from 'react-toastify';
 
-function PostList({ filters, userId}) {
+function PostList({ filters, userId, searchTerm }) {
   const [posts, setPosts] = useState([]);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
@@ -56,8 +56,17 @@ function PostList({ filters, userId}) {
           data = data.filter((p) => p.workplace === filters.workplace);
         }
       }
-
-      // ✅ sort
+      // ✅ lọc theo searchTerm
+    // ✅ lọc theo searchTerm (từ component SearchApp)
+    if (searchTerm?.trim()) {
+      data = data.filter(
+        (p) =>
+          p.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.content?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.author?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+   // ✅ sort
       let sorted = [...data];
       if (filters?.sort === 'Cũ nhất') {
         sorted.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
@@ -109,7 +118,7 @@ function PostList({ filters, userId}) {
     const handleNewPost = () => fetchPosts();
     window.addEventListener('postCreated', handleNewPost);
     return () => window.removeEventListener('postCreated', handleNewPost);
-  }, [user, userId, filters]); // ✅ thêm filters
+  }, [user, userId, filters, searchTerm]); // ✅ thêm filters
 
   const handleCardClick = (post) => {
     if (!user) {
